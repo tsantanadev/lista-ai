@@ -6,6 +6,7 @@ A modern Shopping List REST API built with **Spring Boot** and **Kotlin**, follo
 
 - [Overview](#overview)
 - [Architecture](#architecture)
+- [Database Schema](#database-schema)
 - [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
 - [API Endpoints](#api-endpoints)
@@ -102,6 +103,42 @@ graph TB
 - 📦 **Modularity**: Clear separation between layers
 - 🛡️ **Domain Protection**: Business rules are isolated and protected
 
+## Database Schema
+
+The application uses a relational database with the following entity-relationship model:
+
+```mermaid
+erDiagram
+    SHOPPING_LIST ||--o{ ITEM : contains
+    
+    SHOPPING_LIST {
+        bigint id PK "Auto-generated identifier"
+        varchar(255) name "List name"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    ITEM {
+        bigint id PK "Auto-generated identifier"
+        bigint list_id FK "Reference to shopping list"
+        varchar(255) name "Item name"
+        boolean checked "Item check status"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+```
+
+### Relationships
+
+| Relationship | Description |
+|--------------|-------------|
+| `SHOPPING_LIST` → `ITEM` | One-to-Many: A shopping list can contain multiple items |
+| `ITEM` → `SHOPPING_LIST` | Many-to-One: Each item belongs to exactly one shopping list |
+
+### Cascade Behavior
+
+- When a `SHOPPING_LIST` is deleted, all associated `ITEM` records are also deleted (CASCADE DELETE)
+
 ## Tech Stack
 
 | Technology | Purpose |
@@ -177,21 +214,21 @@ lista-ai/
 │   ├── application/               # 🔌 Application Layer (Ports)
 │   │   ├── port/
 │   │   │   ├── input/             # Inbound Ports (Use Cases)
-│   │   │   │   ├── ShoppingListUseCase.kt
-│   │   │   │   └── ItemUseCase.kt
+│   │   │   │   ├── ItemService.kt
+│   │   │   │   └── ItemListService.kt
 │   │   │   └── output/            # Outbound Ports (Repositories)
-│   │   │       ├── ShoppingListRepository.kt
-│   │   │       └── ItemRepository.kt
+│   │   │       ├── ListRepository.kt
+│   │   │       └── ItemListRepository.kt
 │   │   └── service/               # Use Case Implementations
-│   │       ├── ShoppingListService.kt
-│   │       └── ItemService.kt
+│   │       ├── ListServiceImpl.kt
+│   │       └── ItemListServiceImpl.kt
 │   │
 │   └── infrastructure/            # ⚡ Infrastructure Layer (Adapters)
 │       ├── adapter/
 │       │   ├── input/
 │       │   │   └── rest/          # REST Controllers
-│       │   │       ├── ShoppingListController.kt
-│       │   │       └── ItemController.kt
+│       │   │       ├── ListController.kt
+│       │   │       └── ItemListController.kt
 │       │   └── output/
 │       │       └── persistence/   # JPA Implementations
 │       │           ├── entity/
