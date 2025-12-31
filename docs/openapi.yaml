@@ -1,0 +1,462 @@
+openapi: 3.0.3
+info:
+  title: Lista-AI API
+  description: |
+    A modern Shopping List REST API for managing shopping lists and their items.
+    
+    ## Features
+    - Create and manage multiple shopping lists
+    - Add, update, and remove items from lists
+    - Mark items as checked/unchecked
+  version: 1.0.0
+  contact:
+    name: Lista-AI Team
+    email: support@lista-ai.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.lista-ai.com
+    description: Production server
+
+tags:
+  - name: Shopping Lists
+    description: Operations for managing shopping lists
+  - name: Items
+    description: Operations for managing items within shopping lists
+
+paths:
+  /v1/lists:
+    post:
+      tags:
+        - Shopping Lists
+      summary: Create a new shopping list
+      description: Creates a new shopping list with the specified name
+      operationId: createShoppingList
+      requestBody:
+        description: Shopping list to be created
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShoppingListRequest'
+            example:
+              name: "Shopping List 1"
+      responses:
+        '201':
+          description: Shopping list created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingListResponse'
+              example:
+                list:
+                  id: 123
+                  name: "Shopping List 1"
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/lists/{listId}:
+    put:
+      tags:
+        - Shopping Lists
+      summary: Update a shopping list
+      description: Updates an existing shopping list with the specified ID
+      operationId: updateShoppingList
+      parameters:
+        - $ref: '#/components/parameters/ListIdParam'
+      requestBody:
+        description: Updated shopping list data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateShoppingListRequest'
+            example:
+              name: "Shopping List 2"
+      responses:
+        '200':
+          description: Shopping list updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingListResponse'
+              example:
+                list:
+                  id: 123
+                  name: "Shopping List 2"
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Shopping list not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Shopping Lists
+      summary: Delete a shopping list
+      description: Deletes an existing shopping list and all its items
+      operationId: deleteShoppingList
+      parameters:
+        - $ref: '#/components/parameters/ListIdParam'
+      responses:
+        '204':
+          description: Shopping list deleted successfully
+        '404':
+          description: Shopping list not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/lists/{listId}/items:
+    get:
+      tags:
+        - Items
+      summary: List all items in a shopping list
+      description: Retrieves all items belonging to a specific shopping list
+      operationId: listItems
+      parameters:
+        - $ref: '#/components/parameters/ListIdParam'
+      responses:
+        '200':
+          description: Items retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemsListResponse'
+              example:
+                items:
+                  - id: 1
+                    name: "Item 1"
+                    checked: false
+                  - id: 2
+                    name: "Item 2"
+                    checked: false
+        '404':
+          description: Shopping list not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Items
+      summary: Add an item to a shopping list
+      description: Creates a new item and adds it to the specified shopping list
+      operationId: addItem
+      parameters:
+        - $ref: '#/components/parameters/ListIdParam'
+      requestBody:
+        description: Item to be added
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateItemRequest'
+            example:
+              name: "Item 3"
+              checked: false
+      responses:
+        '201':
+          description: Item added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemResponse'
+              example:
+                item:
+                  id: 3
+                  name: "Item 3"
+                  checked: false
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Shopping list not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/lists/{listId}/items/{itemId}:
+    put:
+      tags:
+        - Items
+      summary: Update an item in a shopping list
+      description: Updates an existing item in the specified shopping list
+      operationId: updateItem
+      parameters:
+        - $ref: '#/components/parameters/ListIdParam'
+        - $ref: '#/components/parameters/ItemIdParam'
+      requestBody:
+        description: Updated item data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateItemRequest'
+            example:
+              name: "Item 4"
+              checked: true
+      responses:
+        '200':
+          description: Item updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemResponse'
+              example:
+                item:
+                  id: 3
+                  name: "Item 4"
+                  checked: true
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Shopping list or item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Items
+      summary: Delete an item from a shopping list
+      description: Removes an item from the specified shopping list
+      operationId: deleteItem
+      parameters:
+        - $ref: '#/components/parameters/ListIdParam'
+        - $ref: '#/components/parameters/ItemIdParam'
+      responses:
+        '204':
+          description: Item deleted successfully
+        '404':
+          description: Shopping list or item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  parameters:
+    ListIdParam:
+      name: listId
+      in: path
+      description: Unique identifier of the shopping list
+      required: true
+      schema:
+        type: integer
+        format: int64
+        example: 123
+
+    ItemIdParam:
+      name: itemId
+      in: path
+      description: Unique identifier of the item
+      required: true
+      schema:
+        type: integer
+        format: int64
+        example: 1
+
+  schemas:
+    # Request Schemas
+    CreateShoppingListRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Name of the shopping list
+          minLength: 1
+          maxLength: 255
+          example: "Shopping List 1"
+
+    UpdateShoppingListRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Updated name of the shopping list
+          minLength: 1
+          maxLength: 255
+          example: "Shopping List 2"
+
+    CreateItemRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Name of the item
+          minLength: 1
+          maxLength: 255
+          example: "Item 3"
+        checked:
+          type: boolean
+          description: Whether the item is checked
+          default: false
+          example: false
+
+    UpdateItemRequest:
+      type: object
+      required:
+        - name
+        - checked
+      properties:
+        name:
+          type: string
+          description: Updated name of the item
+          minLength: 1
+          maxLength: 255
+          example: "Item 4"
+        checked:
+          type: boolean
+          description: Whether the item is checked
+          example: true
+
+    # Response Schemas
+    ShoppingList:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the shopping list
+          example: 123
+        name:
+          type: string
+          description: Name of the shopping list
+          example: "Shopping List 1"
+
+    ShoppingListResponse:
+      type: object
+      properties:
+        list:
+          $ref: '#/components/schemas/ShoppingList'
+
+    Item:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the item
+          example: 1
+        name:
+          type: string
+          description: Name of the item
+          example: "Item 1"
+        checked:
+          type: boolean
+          description: Whether the item is checked
+          example: false
+
+    ItemResponse:
+      type: object
+      properties:
+        item:
+          $ref: '#/components/schemas/Item'
+
+    ItemsListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Item'
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the error
+          example: "2025-12-31T10:30:00Z"
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        error:
+          type: string
+          description: Error type
+          example: "Bad Request"
+        message:
+          type: string
+          description: Detailed error message
+          example: "Name is required"
+        path:
+          type: string
+          description: Request path
+          example: "/v1/lists"
