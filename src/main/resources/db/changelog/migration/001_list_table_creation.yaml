@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-table-list
+      author: tsantanadev
+      preConditions:
+        - onFail: MARK_RAN
+          not:
+            tableExists:
+              tableName: list
+      changes:
+        - createTable:
+            tableName: list
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: list_pkey
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: name
+                  type: TEXT
