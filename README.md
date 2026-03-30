@@ -1,6 +1,6 @@
 # 🛒 Lista-AI
 
-A modern Shopping List REST API built with **Spring Boot** and **Kotlin**, following **Hexagonal Architecture** principles.
+A modern Shopping List REST API built with **Java 25** and **Spring Boot**, following **Hexagonal Architecture** principles.
 
 ## 📋 Table of Contents
 
@@ -41,7 +41,7 @@ graph TB
             REST["🌐 REST Controllers"]
             GraphQL["📊 GraphQL (Future)"]
         end
-        
+
         subgraph OutboundAdapters["Outbound Adapters (Driven)"]
             JPA["💾 JPA Repository"]
             Cache["⚡ Cache Adapter"]
@@ -53,7 +53,7 @@ graph TB
             ShoppingListUC["📝 ShoppingListUseCase"]
             ItemUC["📦 ItemUseCase"]
         end
-        
+
         subgraph OutboundPorts["Outbound Ports"]
             ShoppingListRepo["📚 ShoppingListRepository"]
             ItemRepo["📦 ItemRepository"]
@@ -69,16 +69,16 @@ graph TB
     Client --> REST
     REST --> ShoppingListUC
     REST --> ItemUC
-    
+
     ShoppingListUC --> Entities
     ItemUC --> Entities
-    
+
     ShoppingListUC --> ShoppingListRepo
     ItemUC --> ItemRepo
-    
+
     ShoppingListRepo --> JPA
     ItemRepo --> JPA
-    
+
     JPA --> DB
     Cache --> ExtServices
 
@@ -92,9 +92,9 @@ graph TB
 
 | Layer | Description |
 |-------|-------------|
-| **Domain** | Contains business entities, value objects, and domain services. This is the heart of the application with zero external dependencies. |
+| **Domain** | Contains business entities as Java records, with zero external dependencies. |
 | **Ports** | Defines interfaces (ports) for inbound (use cases) and outbound (repositories) operations. |
-| **Adapters** | Implements the ports. Inbound adapters handle external requests (REST, GraphQL), while outbound adapters handle persistence and external services. |
+| **Adapters** | Implements the ports. Inbound adapters handle external requests (REST), while outbound adapters handle persistence. |
 
 ### Key Benefits
 
@@ -109,22 +109,18 @@ The application uses a relational database with the following entity-relationshi
 
 ```mermaid
 erDiagram
-    SHOPPING_LIST ||--o{ ITEM : contains
-    
+    SHOPPING_LIST ||--o{ ITEM_LIST : contains
+
     SHOPPING_LIST {
         bigint id PK "Auto-generated identifier"
-        varchar(255) name "List name"
-        timestamp created_at "Creation timestamp"
-        timestamp updated_at "Last update timestamp"
+        text name "List name (NOT NULL)"
     }
-    
-    ITEM {
+
+    ITEM_LIST {
         bigint id PK "Auto-generated identifier"
-        bigint list_id FK "Reference to shopping list"
-        varchar(255) name "Item name"
+        bigint list_id FK "Reference to shopping list (NOT NULL)"
+        text description "Item description"
         boolean checked "Item check status"
-        timestamp created_at "Creation timestamp"
-        timestamp updated_at "Last update timestamp"
     }
 ```
 
@@ -132,21 +128,23 @@ erDiagram
 
 | Relationship | Description |
 |--------------|-------------|
-| `SHOPPING_LIST` → `ITEM` | One-to-Many: A shopping list can contain multiple items |
-| `ITEM` → `SHOPPING_LIST` | Many-to-One: Each item belongs to exactly one shopping list |
+| `SHOPPING_LIST` → `ITEM_LIST` | One-to-Many: A shopping list can contain multiple items |
+| `ITEM_LIST` → `SHOPPING_LIST` | Many-to-One: Each item belongs to exactly one shopping list |
 
 ### Cascade Behavior
 
-- When a `SHOPPING_LIST` is deleted, all associated `ITEM` records are also deleted (CASCADE DELETE)
+- When a `SHOPPING_LIST` is deleted, all associated `ITEM_LIST` records are also deleted (CASCADE DELETE)
 
 ## Tech Stack
 
 | Technology | Purpose |
 |------------|---------|
-| **Kotlin** | Primary programming language |
+| **Java 25** | Primary programming language |
 | **Spring Boot 4.x** | Application framework |
 | **Spring Data JPA** | Data persistence |
-| **PostgreSQL** | Database (configurable) |
+| **MapStruct 1.6** | Compile-time object mapping |
+| **PostgreSQL** | Relational database |
+| **Liquibase** | Database schema migrations |
 | **Gradle (Kotlin DSL)** | Build tool |
 | **OpenAPI 3.0** | API documentation |
 
@@ -155,15 +153,13 @@ erDiagram
 ### Prerequisites
 
 - JDK 25 or higher
-- Gradle 8.x
-- Docker (optional, for database)
+- Docker (for PostgreSQL)
 
 ### Running the Application
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/lista-ai.git
-cd lista-ai
+# Start PostgreSQL
+docker-compose up -d
 
 # Run with Gradle
 ./gradlew bootRun
@@ -173,20 +169,14 @@ cd lista-ai
 java -jar build/libs/lista-ai-*.jar
 ```
 
-### Running with Docker
-
-```bash
-docker-compose up -d
-```
-
 ## API Endpoints
 
 ### Shopping Lists
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| `GET` | `/v1/lists` | Get all shopping lists |
 | `POST` | `/v1/lists` | Create a new shopping list |
-| `PUT` | `/v1/lists/{listId}` | Update a shopping list |
 | `DELETE` | `/v1/lists/{listId}` | Delete a shopping list |
 
 ### Shopping List Items
@@ -204,41 +194,24 @@ docker-compose up -d
 
 ```
 lista-ai/
-├── src/main/kotlin/com/listaai/
+├── src/main/java/com/listaai/
 │   ├── domain/                    # 💎 Domain Layer
-│   │   ├── model/                 # Entities & Value Objects
-│   │   │   ├── ShoppingList.kt
-│   │   │   └── Item.kt
-│   │   └── service/               # Domain Services
+│   │   └── model/                 # Java records: ShoppingList, ItemList
 │   │
 │   ├── application/               # 🔌 Application Layer (Ports)
 │   │   ├── port/
-│   │   │   ├── input/             # Inbound Ports (Use Cases)
-│   │   │   │   ├── ItemService.kt
-│   │   │   │   └── ItemListService.kt
+│   │   │   ├── input/             # Inbound Ports (Use Cases) + command records
 │   │   │   └── output/            # Outbound Ports (Repositories)
-│   │   │       ├── ListRepository.kt
-│   │   │       └── ItemListRepository.kt
 │   │   └── service/               # Use Case Implementations
-│   │       ├── ListServiceImpl.kt
-│   │       └── ItemListServiceImpl.kt
 │   │
 │   └── infrastructure/            # ⚡ Infrastructure Layer (Adapters)
-│       ├── adapter/
-│       │   ├── input/
-│       │   │   └── rest/          # REST Controllers
-│       │   │       ├── ListController.kt
-│       │   │       └── ItemListController.kt
-│       │   └── output/
-│       │       └── persistence/   # JPA Implementations
-│       │           ├── entity/
-│       │           ├── mapper/
-│       │           └── repository/
-│       └── config/                # Spring Configuration
+│       └── adapter/
+│           ├── input/rest/        # REST Controllers, DTOs (records), MapStruct mappers
+│           └── output/persistence/ # JPA entities, Spring Data repos, MapStruct mappers, adapters
 │
 ├── src/main/resources/
-│   ├── application.yml
-│   └── openapi.yaml
+│   ├── application.yaml
+│   └── db/changelog/              # Liquibase migrations
 │
 └── build.gradle.kts
 ```

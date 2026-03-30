@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-table-item-list
+      author: tsantanadev
+      preConditions:
+        - onFail: MARK_RAN
+          not:
+            tableExists:
+              tableName: item_list
+      changes:
+        - createTable:
+            tableName: item_list
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: list_pkey
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: checked
+                  type: BOOLEAN
+              - column:
+                  constraints:
+                    nullable: false
+                  name: list_id
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: item_list
+            baseColumnNames: list_id
+            constraintName: fk_item_list
+            referencedTableName: list
+            referencedColumnNames: id
+            onDelete: CASCADE
