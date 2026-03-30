@@ -46,23 +46,36 @@ tasks.withType<Test> {
 }
 
 tasks.jacocoTestReport {
-    dependsOn(tasks.test)
-    reports {
-        xml.required = true
-        html.required = true
-    }
-    classDirectories.setFrom(
-        files(classDirectories.files.map {
-            fileTree(it) {
-                exclude(
-                    "**/ListaAiApplication*",
-                    "**/domain/model/**",
-                    "**/persistence/entity/**",
-                    "**/mapper/**"
-                )
-            }
-        })
-    )
+	dependsOn(tasks.test)
+	reports {
+		xml.required = true
+		html.required = true
+	}
+	classDirectories.setFrom(
+		files(classDirectories.files.map {
+			fileTree(it) {
+				exclude(
+					"**/ListaAiApplication*",
+					// Domain model records (no logic)
+					"**/domain/model/**",
+					// JPA entities (no logic)
+					"**/persistence/entity/**",
+					// MapStruct-generated mappers (use explicit paths, not broad wildcard)
+					"**/adapter/input/rest/mapper/**",
+					"**/adapter/output/persistence/mapper/**",
+					// REST DTOs (pure records, no branching logic)
+					"**/adapter/input/rest/dto/**",
+					// Command objects (pure records, no branching logic)
+					"**/port/input/command/**",
+					// Port interfaces (no implementations to instrument)
+					"**/port/input/**",
+					"**/port/output/**",
+					// Spring Data JPA repository interfaces (runtime-proxied, not instrumented)
+					"**/persistence/repository/**"
+				)
+			}
+		})
+	)
 }
 
 tasks.jacocoTestCoverageVerification {
