@@ -34,7 +34,13 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
 	testImplementation("org.testcontainers:testcontainers-junit-jupiter")
 	testImplementation("org.testcontainers:testcontainers-postgresql")
-	testImplementation("io.rest-assured:rest-assured:5.5.2")
+	testImplementation("io.rest-assured:rest-assured:5.5.2") {
+		// Spring Boot 4 forces Groovy 5.x via BOM, but RestAssured 5.5.2 requires Groovy 4.x
+		exclude(group = "org.apache.groovy")
+	}
+	testImplementation("org.apache.groovy:groovy:4.0.24")
+	testImplementation("org.apache.groovy:groovy-xml:4.0.24")
+	testImplementation("org.apache.groovy:groovy-json:4.0.24")
 }
 
 tasks.withType<JavaCompile> {
@@ -43,6 +49,7 @@ tasks.withType<JavaCompile> {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	jvmArgs("--add-opens", "java.base/java.lang=ALL-UNNAMED")
 }
 
 tasks.jacocoTestReport {

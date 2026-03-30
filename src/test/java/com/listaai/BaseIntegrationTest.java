@@ -1,6 +1,8 @@
 package com.listaai;
 
 import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.http.ContentType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,16 +11,16 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public abstract class BaseIntegrationTest {
 
-    @Container
     @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+
+    static {
+        postgres.start();
+    }
 
     @LocalServerPort
     private int port;
@@ -28,8 +30,12 @@ public abstract class BaseIntegrationTest {
 
     @BeforeEach
     void setUpRestAssured() {
-        RestAssured.baseURI = "http://localhost";
-        RestAssured.port = port;
+        RestAssured.requestSpecification = new RequestSpecBuilder()
+                .setBaseUri("http://localhost")
+                .setPort(port)
+                .setContentType(ContentType.JSON)
+                .setAccept(ContentType.JSON)
+                .build();
     }
 
     @AfterEach
