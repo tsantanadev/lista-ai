@@ -65,8 +65,6 @@ tasks.jacocoTestReport {
 					"**/adapter/output/persistence/mapper/**",
 					// REST DTOs (pure records, no branching logic)
 					"**/adapter/input/rest/dto/**",
-					// Command objects (pure records, no branching logic)
-					"**/port/input/command/**",
 					// Port interfaces (no implementations to instrument)
 					"**/port/input/**",
 					"**/port/output/**",
@@ -79,13 +77,13 @@ tasks.jacocoTestReport {
 }
 
 tasks.jacocoTestCoverageVerification {
-    dependsOn(tasks.jacocoTestReport)
-    classDirectories.setFrom(tasks.jacocoTestReport.get().classDirectories)
-    violationRules {
-        rule {
-            limit { minimum = "0.90".toBigDecimal() }
-        }
-    }
+	dependsOn(tasks.jacocoTestReport)
+	classDirectories.setFrom(tasks.jacocoTestReport.get().classDirectories)
+	violationRules {
+		rule {
+			limit { minimum = "0.90".toBigDecimal() }
+		}
+	}
 }
 
 tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }
