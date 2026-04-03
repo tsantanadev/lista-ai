@@ -1,0 +1,9 @@
+app:
+  jwt:
+    secret: dGVzdC1zZWNyZXQta2V5LWZvci10ZXN0aW5nLW9ubHktMzItY2hhcnMhISE=
+    expiration-seconds: 900
+    refresh-expiration-days: 7
+  auth:
+    google:
+      jwks-uri: http://localhost:9090/oauth2/v3/certs
+      client-id: test-google-client-id

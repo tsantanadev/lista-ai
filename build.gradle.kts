@@ -41,6 +41,11 @@ dependencies {
 	testImplementation("org.apache.groovy:groovy:4.0.24")
 	testImplementation("org.apache.groovy:groovy-xml:4.0.24")
 	testImplementation("org.apache.groovy:groovy-json:4.0.24")
+	implementation("org.springframework.boot:spring-boot-starter-security")
+	implementation("org.springframework.security:spring-security-oauth2-resource-server")
+	implementation("org.springframework.security:spring-security-oauth2-jose")
+	testImplementation("org.wiremock:wiremock-standalone:3.12.1")
+	testImplementation("org.springframework.security:spring-security-test")
 }
 
 tasks.withType<JavaCompile> {
