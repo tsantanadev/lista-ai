@@ -9,6 +9,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,11 @@ class GoogleAuthProviderTest {
         wireMock.start();
         wireMock.stubFor(get("/oauth2/v3/certs")
                 .willReturn(okJson(new JWKSet(testRsaKey.toPublicJWK()).toString())));
+    }
+
+    @AfterAll
+    static void teardown() {
+        wireMock.stop();
     }
 
     private GoogleAuthProvider googleAuthProvider;
