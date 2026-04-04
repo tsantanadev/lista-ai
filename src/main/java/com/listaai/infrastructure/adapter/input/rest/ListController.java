@@ -6,6 +6,7 @@ import com.listaai.domain.model.ShoppingList;
 import com.listaai.infrastructure.adapter.input.rest.dto.ListRequest;
 import com.listaai.infrastructure.adapter.input.rest.dto.ListResponse;
 import com.listaai.infrastructure.adapter.input.rest.mapper.ListRestMapper;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -37,7 +38,7 @@ public class ListController {
             @AuthenticationPrincipal Jwt jwt) {
         Long userId = Long.parseLong(jwt.getSubject());
         ShoppingList created = listService.createList(new CreateListCommand(request.name(), userId));
-        return ResponseEntity.ok(mapper.toResponse(created));
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(created));
     }
 
     @DeleteMapping("/{id}")

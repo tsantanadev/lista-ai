@@ -12,16 +12,9 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-@SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {
-                "spring.autoconfigure.exclude=" +
-                        "org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration," +
-                        "org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration," +
-                        "org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration," +
-                        "org.springframework.boot.security.autoconfigure.actuate.web.servlet.ManagementWebSecurityAutoConfiguration"
-        }
-)
+import static io.restassured.RestAssured.given;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public abstract class BaseIntegrationTest {
 
     @ServiceConnection
@@ -49,6 +42,23 @@ public abstract class BaseIntegrationTest {
 
     @AfterEach
     void cleanDatabase() {
-        jdbcTemplate.execute("TRUNCATE TABLE item_list, list RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute(
+            "TRUNCATE TABLE item_list, user_shopping_list, list, oauth_identities, refresh_tokens, users RESTART IDENTITY CASCADE");
+    }
+
+    protected String registerAndGetToken(String email, String password, String name) {
+        return given()
+                .body("{\"email\":\"" + email + "\",\"password\":\"" + password
+                        + "\",\"name\":\"" + name + "\"}")
+                .when()
+                .post("/v1/auth/register")
+                .then()
+                .statusCode(200)
+                .extract()
+                .path("accessToken");
+    }
+
+    protected String defaultUserToken() {
+        return registerAndGetToken("test@example.com", "Password123!", "Test User");
     }
 }

@@ -11,7 +11,10 @@ public class ListControllerIT extends BaseIntegrationTest {
 
     @Test
     void createList_returns201WithBody() {
+        String token = defaultUserToken();
+
         given()
+            .header("Authorization", "Bearer " + token)
             .contentType(ContentType.JSON)
             .body("{\"name\":\"Groceries\"}")
         .when()
@@ -24,10 +27,13 @@ public class ListControllerIT extends BaseIntegrationTest {
 
     @Test
     void getAllLists_returnsSeededLists() {
-        given().contentType(ContentType.JSON).body("{\"name\":\"List 1\"}").when().post("/v1/lists");
-        given().contentType(ContentType.JSON).body("{\"name\":\"List 2\"}").when().post("/v1/lists");
+        String token = defaultUserToken();
+
+        given().header("Authorization", "Bearer " + token).contentType(ContentType.JSON).body("{\"name\":\"List 1\"}").when().post("/v1/lists");
+        given().header("Authorization", "Bearer " + token).contentType(ContentType.JSON).body("{\"name\":\"List 2\"}").when().post("/v1/lists");
 
         given()
+            .header("Authorization", "Bearer " + token)
         .when()
             .get("/v1/lists")
         .then()
@@ -37,7 +43,10 @@ public class ListControllerIT extends BaseIntegrationTest {
 
     @Test
     void getAllLists_returnsEmptyArray() {
+        String token = defaultUserToken();
+
         given()
+            .header("Authorization", "Bearer " + token)
         .when()
             .get("/v1/lists")
         .then()
@@ -47,7 +56,10 @@ public class ListControllerIT extends BaseIntegrationTest {
 
     @Test
     void deleteList_returns204() {
+        String token = defaultUserToken();
+
         int id = given()
+            .header("Authorization", "Bearer " + token)
             .contentType(ContentType.JSON)
             .body("{\"name\":\"ToDelete\"}")
         .when()
@@ -58,6 +70,7 @@ public class ListControllerIT extends BaseIntegrationTest {
             .path("id");
 
         given()
+            .header("Authorization", "Bearer " + token)
         .when()
             .delete("/v1/lists/" + id)
         .then()
@@ -65,11 +78,14 @@ public class ListControllerIT extends BaseIntegrationTest {
     }
 
     @Test
-    void deleteList_nonExistentId_returns204() {
+    void deleteList_nonExistentId_returns403() {
+        String token = defaultUserToken();
+
         given()
+            .header("Authorization", "Bearer " + token)
         .when()
             .delete("/v1/lists/9999")
         .then()
-            .statusCode(204);
+            .statusCode(403);
     }
 }

@@ -9,8 +9,9 @@ import static org.hamcrest.Matchers.*;
 
 public class ItemListControllerIT extends BaseIntegrationTest {
 
-    private int seedList() {
+    private int seedList(String token) {
         return given()
+            .header("Authorization", "Bearer " + token)
             .contentType(ContentType.JSON)
             .body("{\"name\":\"Test List\"}")
         .when()
@@ -21,8 +22,9 @@ public class ItemListControllerIT extends BaseIntegrationTest {
             .path("id");
     }
 
-    private void seedItem(int listId, String description) {
+    private void seedItem(String token, int listId, String description) {
         given()
+            .header("Authorization", "Bearer " + token)
             .contentType(ContentType.JSON)
             .body("{\"description\":\"" + description + "\"}")
         .when()
@@ -33,11 +35,13 @@ public class ItemListControllerIT extends BaseIntegrationTest {
 
     @Test
     void getItems_returnsItemsForList() {
-        int listId = seedList();
-        seedItem(listId, "Milk");
-        seedItem(listId, "Eggs");
+        String token = defaultUserToken();
+        int listId = seedList(token);
+        seedItem(token, listId, "Milk");
+        seedItem(token, listId, "Eggs");
 
         given()
+            .header("Authorization", "Bearer " + token)
         .when()
             .get("/v1/lists/" + listId + "/items")
         .then()
@@ -47,9 +51,11 @@ public class ItemListControllerIT extends BaseIntegrationTest {
 
     @Test
     void getItems_emptyList() {
-        int listId = seedList();
+        String token = defaultUserToken();
+        int listId = seedList(token);
 
         given()
+            .header("Authorization", "Bearer " + token)
         .when()
             .get("/v1/lists/" + listId + "/items")
         .then()
@@ -59,9 +65,11 @@ public class ItemListControllerIT extends BaseIntegrationTest {
 
     @Test
     void createItem_returns201() {
-        int listId = seedList();
+        String token = defaultUserToken();
+        int listId = seedList(token);
 
         given()
+            .header("Authorization", "Bearer " + token)
             .contentType(ContentType.JSON)
             .body("{\"description\":\"Milk\"}")
         .when()
@@ -72,10 +80,12 @@ public class ItemListControllerIT extends BaseIntegrationTest {
 
     @Test
     void updateItem_returns200() {
-        int listId = seedList();
-        seedItem(listId, "Milk");
+        String token = defaultUserToken();
+        int listId = seedList(token);
+        seedItem(token, listId, "Milk");
 
         int itemId = given()
+            .header("Authorization", "Bearer " + token)
         .when()
             .get("/v1/lists/" + listId + "/items")
         .then()
@@ -84,6 +94,7 @@ public class ItemListControllerIT extends BaseIntegrationTest {
             .path("[0].id");
 
         given()
+            .header("Authorization", "Bearer " + token)
             .contentType(ContentType.JSON)
             .body("{\"description\":\"Butter\",\"checked\":true}")
         .when()
@@ -96,10 +107,12 @@ public class ItemListControllerIT extends BaseIntegrationTest {
 
     @Test
     void deleteItem_returns204() {
-        int listId = seedList();
-        seedItem(listId, "Milk");
+        String token = defaultUserToken();
+        int listId = seedList(token);
+        seedItem(token, listId, "Milk");
 
         int itemId = given()
+            .header("Authorization", "Bearer " + token)
         .when()
             .get("/v1/lists/" + listId + "/items")
         .then()
@@ -108,6 +121,7 @@ public class ItemListControllerIT extends BaseIntegrationTest {
             .path("[0].id");
 
         given()
+            .header("Authorization", "Bearer " + token)
         .when()
             .delete("/v1/lists/" + listId + "/items/" + itemId)
         .then()

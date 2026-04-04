@@ -8,10 +8,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,53 +27,71 @@ class ListServiceImplTest {
     private ListServiceImpl listService;
 
     @Test
-    void getAll_returnsMappedLists() {
+    void getAllLists_returnsMappedLists() {
+        Long userId = 1L;
         List<ShoppingList> expected = List.of(
                 new ShoppingList(1L, "Groceries"),
                 new ShoppingList(2L, "Hardware")
         );
-        when(listRepository.findAll()).thenReturn(expected);
+        when(listRepository.findAllByUserId(userId)).thenReturn(expected);
 
-        List<ShoppingList> result = listService.getAll();
+        List<ShoppingList> result = listService.getAllLists(userId);
 
         assertThat(result).hasSize(2).isEqualTo(expected);
     }
 
     @Test
-    void getAll_returnsEmptyList() {
-        when(listRepository.findAll()).thenReturn(List.of());
+    void getAllLists_returnsEmptyList() {
+        Long userId = 1L;
+        when(listRepository.findAllByUserId(userId)).thenReturn(List.of());
 
-        List<ShoppingList> result = listService.getAll();
+        List<ShoppingList> result = listService.getAllLists(userId);
 
         assertThat(result).isEmpty();
     }
 
     @Test
-    void save_delegatesToRepository() {
-        CreateListCommand command = new CreateListCommand("Groceries");
+    void createList_delegatesToRepository() {
+        Long userId = 1L;
+        CreateListCommand command = new CreateListCommand("Groceries", userId);
         ShoppingList expected = new ShoppingList(null, "Groceries");
-        when(listRepository.save(expected)).thenReturn(new ShoppingList(1L, "Groceries"));
+        when(listRepository.save(expected, userId)).thenReturn(new ShoppingList(1L, "Groceries"));
 
-        listService.save(command);
+        listService.createList(command);
 
-        verify(listRepository).save(new ShoppingList(null, "Groceries"));
+        verify(listRepository).save(new ShoppingList(null, "Groceries"), userId);
     }
 
     @Test
-    void save_returnsPersistedDomain() {
-        CreateListCommand command = new CreateListCommand("Groceries");
+    void createList_returnsPersistedDomain() {
+        Long userId = 1L;
+        CreateListCommand command = new CreateListCommand("Groceries", userId);
         ShoppingList persisted = new ShoppingList(1L, "Groceries");
-        when(listRepository.save(new ShoppingList(null, "Groceries"))).thenReturn(persisted);
+        when(listRepository.save(new ShoppingList(null, "Groceries"), userId)).thenReturn(persisted);
 
-        ShoppingList result = listService.save(command);
+        ShoppingList result = listService.createList(command);
 
         assertThat(result).isEqualTo(persisted);
     }
 
     @Test
-    void delete_delegatesToRepository() {
-        listService.delete(1L);
+    void deleteList_delegatesToRepository() {
+        Long listId = 1L;
+        Long userId = 1L;
+        when(listRepository.existsByIdAndUserId(listId, userId)).thenReturn(true);
 
-        verify(listRepository).delete(1L);
+        listService.deleteList(listId, userId);
+
+        verify(listRepository).deleteById(listId);
+    }
+
+    @Test
+    void deleteList_throwsAccessDenied_whenNotOwner() {
+        Long listId = 1L;
+        Long userId = 1L;
+        when(listRepository.existsByIdAndUserId(listId, userId)).thenReturn(false);
+
+        assertThatThrownBy(() -> listService.deleteList(listId, userId))
+                .isInstanceOf(AccessDeniedException.class);
     }
 }
