@@ -1,0 +1,123 @@
+package com.listaai.application.service;
+
+import com.listaai.application.port.input.*;
+import com.listaai.application.port.input.command.*;
+import com.listaai.application.port.output.*;
+import com.listaai.domain.model.OAuthIdentity;
+import com.listaai.domain.model.User;
+import com.listaai.infrastructure.security.JwtTokenService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Optional;
+
+@Service
+public class AuthService implements AuthUseCase {
+
+    private final UserRepository userRepository;
+    private final OAuthIdentityRepository oAuthIdentityRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final AuthProviderRegistry authProviderRegistry;
+    private final JwtTokenService jwtTokenService;
+    private final PasswordEncoder passwordEncoder;
+    private final long refreshExpirationDays;
+
+    private static final long ACCESS_TOKEN_EXPIRY_SECONDS = 900L;
+
+    public AuthService(
+            UserRepository userRepository,
+            OAuthIdentityRepository oAuthIdentityRepository,
+            RefreshTokenRepository refreshTokenRepository,
+            AuthProviderRegistry authProviderRegistry,
+            JwtTokenService jwtTokenService,
+            PasswordEncoder passwordEncoder,
+            @Value("${app.jwt.refresh-expiration-days}") long refreshExpirationDays) {
+        this.userRepository = userRepository;
+        this.oAuthIdentityRepository = oAuthIdentityRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.authProviderRegistry = authProviderRegistry;
+        this.jwtTokenService = jwtTokenService;
+        this.passwordEncoder = passwordEncoder;
+        this.refreshExpirationDays = refreshExpirationDays;
+    }
+
+    @Override
+    @Transactional
+    public AuthResult register(RegisterCommand command) {
+        if (userRepository.findByEmail(command.email()).isPresent()) {
+            throw new IllegalStateException("Email already registered: " + command.email());
+        }
+        String hash = passwordEncoder.encode(command.password());
+        User user = userRepository.save(
+                new User(null, command.email(), command.name()), hash);
+        return issueTokens(user);
+    }
+
+    @Override
+    @Transactional
+    public AuthResult loginLocal(LoginCommand command) {
+        AuthProvider provider = authProviderRegistry.get("local");
+        AuthIdentity identity = provider.authenticate(command);
+        User user = userRepository.findByEmail(identity.email())
+                .orElseThrow(() -> new BadCredentialsException("User not found"));
+        return issueTokens(user);
+    }
+
+    @Override
+    @Transactional
+    public AuthResult loginGoogle(GoogleAuthCommand command) {
+        AuthProvider provider = authProviderRegistry.get("google");
+        AuthIdentity identity = provider.authenticate(command);
+
+        Optional<OAuthIdentity> existingIdentity =
+                oAuthIdentityRepository.findByProviderAndProviderUserId("google", identity.providerUserId());
+
+        User user;
+        if (existingIdentity.isPresent()) {
+            user = userRepository.findById(existingIdentity.get().userId())
+                    .orElseThrow(() -> new IllegalStateException("User not found for OAuth identity"));
+        } else {
+            user = userRepository.findByEmail(identity.email())
+                    .orElseGet(() -> userRepository.save(
+                            new User(null, identity.email(), identity.name()), null));
+            oAuthIdentityRepository.save(
+                    new OAuthIdentity(null, user.id(), "google", identity.providerUserId()));
+        }
+        return issueTokens(user);
+    }
+
+    @Override
+    @Transactional
+    public AuthResult refresh(RefreshCommand command) {
+        String tokenHash = jwtTokenService.hashRefreshToken(command.refreshToken());
+        Long userId = refreshTokenRepository.findUserIdByTokenHashIfValid(tokenHash)
+                .orElseThrow(() -> new BadCredentialsException("Invalid or expired refresh token"));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadCredentialsException("User not found"));
+
+        refreshTokenRepository.revoke(tokenHash);
+        return issueTokens(user);
+    }
+
+    @Override
+    @Transactional
+    public void logout(RefreshCommand command) {
+        String tokenHash = jwtTokenService.hashRefreshToken(command.refreshToken());
+        refreshTokenRepository.revoke(tokenHash);
+    }
+
+    private AuthResult issueTokens(User user) {
+        String accessToken = jwtTokenService.generateAccessToken(user);
+        String refreshToken = jwtTokenService.generateRefreshToken();
+        String refreshTokenHash = jwtTokenService.hashRefreshToken(refreshToken);
+        Instant expiresAt = Instant.now().plus(refreshExpirationDays, ChronoUnit.DAYS);
+        refreshTokenRepository.save(user.id(), refreshTokenHash, expiresAt);
+        return new AuthResult(accessToken, refreshToken, ACCESS_TOKEN_EXPIRY_SECONDS);
+    }
+}
