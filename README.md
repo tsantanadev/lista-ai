@@ -262,7 +262,7 @@ All protected endpoints require `Authorization: Bearer <access-token>`.
 | `PUT` | `/v1/lists/{listId}/items/{itemId}` | Update an item |
 | `DELETE` | `/v1/lists/{listId}/items/{itemId}` | Delete an item |
 
-> 📖 Full API documentation available at `/swagger-ui.html` when the application is running.
+> 📖 Full API documentation available at `http://localhost:8080/swagger-ui/index.html` when the application is running.
 
 ## Project Structure
 
