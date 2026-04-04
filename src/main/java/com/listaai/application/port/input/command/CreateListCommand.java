@@ -1,3 +1,3 @@
 package com.listaai.application.port.input.command;
 
-public record CreateListCommand(String name) {}
+public record CreateListCommand(String name, Long userId) {}

@@ -4,31 +4,34 @@ import com.listaai.application.port.input.ListService;
 import com.listaai.application.port.input.command.CreateListCommand;
 import com.listaai.application.port.output.ListRepository;
 import com.listaai.domain.model.ShoppingList;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 
 @Service
 public class ListServiceImpl implements ListService {
 
-    private final ListRepository repository;
+    private final ListRepository listRepository;
 
-    public ListServiceImpl(ListRepository repository) {
-        this.repository = repository;
+    public ListServiceImpl(ListRepository listRepository) {
+        this.listRepository = listRepository;
     }
 
     @Override
-    public List<ShoppingList> getAll() {
-        return repository.findAll();
+    public List<ShoppingList> getAllLists(Long userId) {
+        return listRepository.findAllByUserId(userId);
     }
 
     @Override
-    public ShoppingList save(CreateListCommand createCommand) {
-        return repository.save(new ShoppingList(null, createCommand.name()));
+    public ShoppingList createList(CreateListCommand command) {
+        return listRepository.save(new ShoppingList(null, command.name()), command.userId());
     }
 
     @Override
-    public void delete(long id) {
-        repository.delete(id);
+    public void deleteList(Long listId, Long userId) {
+        if (!listRepository.existsByIdAndUserId(listId, userId)) {
+            throw new AccessDeniedException("You do not own list: " + listId);
+        }
+        listRepository.deleteById(listId);
     }
 }
