@@ -1,5 +1,8 @@
 # 🛒 Lista-AI
 
+![CI](https://github.com/tsantanadev/lista-ai/actions/workflows/ci.yml/badge.svg)
+[![codecov](https://codecov.io/gh/tsantanadev/lista-ai/graph/badge.svg)](https://codecov.io/gh/tsantanadev/lista-ai)
+
 A modern Shopping List REST API built with **Java 25** and **Spring Boot**, following **Hexagonal Architecture** principles.
 
 ## 📋 Table of Contents

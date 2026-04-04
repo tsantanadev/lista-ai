@@ -3,14 +3,14 @@ spring:
     name: Lista AI
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/lista_ai_db
-    username: postgres
-    password: password
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/lista_ai_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
   jpa:
     database: POSTGRESQL
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: true
+    show-sql: ${SHOW_SQL:false}
     hibernate:
       ddl-auto: validate
     properties:
