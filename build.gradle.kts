@@ -28,6 +28,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.security:spring-security-oauth2-resource-server")
 	implementation("org.springframework.security:spring-security-oauth2-jose")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.4")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	developmentOnly("org.springframework.boot:spring-boot-docker-compose")
 	runtimeOnly("org.postgresql:postgresql")
@@ -81,7 +82,9 @@ tasks.jacocoTestReport {
 					"**/port/input/**",
 					"**/port/output/**",
 					// Spring Data JPA repository interfaces (runtime-proxied, not instrumented)
-					"**/persistence/repository/**"
+					"**/persistence/repository/**",
+					// Spring Boot configuration classes (no business logic)
+					"**/infrastructure/config/**"
 				)
 			}
 		})
