@@ -28,7 +28,7 @@ class LocalAuthProviderTest {
 
     @BeforeEach
     void setUp() {
-        passwordEncoder = new BCryptPasswordEncoder(12);
+        passwordEncoder = new BCryptPasswordEncoder(4);
         localAuthProvider = new LocalAuthProvider(userRepository, passwordEncoder);
     }
 
@@ -48,6 +48,7 @@ class LocalAuthProviderTest {
         AuthIdentity identity = localAuthProvider.authenticate(new LoginCommand("user@example.com", rawPassword));
         assertThat(identity.email()).isEqualTo("user@example.com");
         assertThat(identity.name()).isEqualTo("Test User");
+        assertThat(identity.providerUserId()).isNull();
     }
 
     @Test
