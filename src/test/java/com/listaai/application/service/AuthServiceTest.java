@@ -114,6 +114,30 @@ class AuthServiceTest {
     }
 
     @Test
+    void loginGoogle_existingOAuthIdentity_returnsTokensWithoutCreatingNewUser() {
+        AuthProvider googleProvider = mock(AuthProvider.class);
+        when(authProviderRegistry.get("google")).thenReturn(googleProvider);
+        when(googleProvider.authenticate(any()))
+                .thenReturn(new AuthIdentity("user@gmail.com", "Google User", "google-sub-123"));
+
+        com.listaai.domain.model.OAuthIdentity existingIdentity =
+                new com.listaai.domain.model.OAuthIdentity(1L, 2L, "google", "google-sub-123");
+        when(oAuthIdentityRepository.findByProviderAndProviderUserId("google", "google-sub-123"))
+                .thenReturn(Optional.of(existingIdentity));
+        when(userRepository.findById(2L))
+                .thenReturn(Optional.of(new User(2L, "user@gmail.com", "Google User")));
+        when(jwtTokenService.generateAccessToken(any())).thenReturn("access-token");
+        when(jwtTokenService.generateRefreshToken()).thenReturn("refresh-token");
+        when(jwtTokenService.hashRefreshToken("refresh-token")).thenReturn("hash");
+
+        AuthResult result = authService.loginGoogle(new GoogleAuthCommand("id-token"));
+
+        assertThat(result.accessToken()).isEqualTo("access-token");
+        verify(userRepository, never()).save(any(), any()); // no new user created
+        verify(oAuthIdentityRepository, never()).save(any()); // no new identity created
+    }
+
+    @Test
     void refresh_validToken_returnsNewTokens() {
         when(jwtTokenService.hashRefreshToken("old-token")).thenReturn("old-hash");
         when(refreshTokenRepository.findUserIdByTokenHashIfValid("old-hash"))
