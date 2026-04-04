@@ -12,7 +12,16 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+                "spring.autoconfigure.exclude=" +
+                        "org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration," +
+                        "org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration," +
+                        "org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration," +
+                        "org.springframework.boot.security.autoconfigure.actuate.web.servlet.ManagementWebSecurityAutoConfiguration"
+        }
+)
 public abstract class BaseIntegrationTest {
 
     @ServiceConnection
