@@ -9,8 +9,6 @@ target/
 # Gradle
 .gradle/
 gradle-app.setting
-!gradle-wrapper.jar
-!gradle-wrapper.properties
 
 # Maven
 pom.xml.tag
@@ -22,6 +20,7 @@ release.properties
 # Java
 *.class
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.war
 *.ear
 *.nar
