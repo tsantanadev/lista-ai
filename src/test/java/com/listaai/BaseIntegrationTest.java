@@ -53,7 +53,7 @@ public abstract class BaseIntegrationTest {
                 .when()
                 .post("/v1/auth/register")
                 .then()
-                .statusCode(200)
+                .statusCode(201)
                 .extract()
                 .path("accessToken");
     }

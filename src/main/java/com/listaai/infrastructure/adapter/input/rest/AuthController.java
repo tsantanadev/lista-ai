@@ -3,6 +3,7 @@ package com.listaai.infrastructure.adapter.input.rest;
 import com.listaai.application.port.input.AuthUseCase;
 import com.listaai.infrastructure.adapter.input.rest.dto.*;
 import com.listaai.infrastructure.adapter.input.rest.mapper.AuthRestMapper;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +21,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<TokenResponse> register(@RequestBody RegisterRequest request) {
-        return ResponseEntity.ok(mapper.toResponse(authUseCase.register(mapper.toCommand(request))));
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(authUseCase.register(mapper.toCommand(request))));
     }
 
     @PostMapping("/login")

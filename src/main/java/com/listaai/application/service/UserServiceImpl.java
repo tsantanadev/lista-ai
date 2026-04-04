@@ -21,8 +21,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User findById(Long id) {
-        // Used by SecurityConfig to load user from JWT subject
-        throw new UnsupportedOperationException("Not needed yet — add when required");
+    public Optional<User> findById(Long id) {
+        return userRepository.findById(id);
     }
 }
