@@ -1,9 +1,72 @@
+# Environment
 .env
+
+# Compiled output
 build/
-.worktrees/
+out/
+target/
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+
+# Kotlin
+.kotlin/
+*.kotlin_module
+
+# IDE - IntelliJ IDEA
 .idea/
 *.iml
-.gradle/
-/out/
-.kotlin/
-*.jar
+*.iws
+*.ipr
+out/
+
+# IDE - Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# IDE - VS Code
+.vscode/settings.json
+.vscode/launch.json
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V2
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Spring Boot
+spring-shell.log
+
+# Worktrees
+.worktrees/
