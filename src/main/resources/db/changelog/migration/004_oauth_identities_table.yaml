@@ -1,0 +1,37 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004
+      author: lista-ai
+      changes:
+        - createTable:
+            tableName: oauth_identities
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_oauth_identities_user
+                    references: users(id)
+                    deleteCascade: true
+              - column:
+                  name: provider
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: provider_user_id
+                  type: TEXT
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: oauth_identities
+            columnNames: provider, provider_user_id
+            constraintName: uq_oauth_identities_provider
