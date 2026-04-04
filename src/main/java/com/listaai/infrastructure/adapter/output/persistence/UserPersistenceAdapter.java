@@ -25,6 +25,12 @@ public class UserPersistenceAdapter implements UserRepository {
     }
 
     @Override
+    public Optional<UserRepository.UserWithHash> findByEmailWithHash(String email) {
+        return jpaRepository.findByEmail(email)
+                .map(e -> new UserRepository.UserWithHash(mapper.toDomain(e), e.getPasswordHash()));
+    }
+
+    @Override
     public User save(User user, String passwordHash) {
         UserEntity entity = new UserEntity(user.email(), user.name(), passwordHash);
         return mapper.toDomain(jpaRepository.save(entity));
