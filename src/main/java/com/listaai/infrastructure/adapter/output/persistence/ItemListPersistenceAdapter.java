@@ -28,10 +28,11 @@ public class ItemListPersistenceAdapter implements ItemListRepository {
     }
 
     @Override
-    public void save(ItemList itemList, long listId) {
+    public ItemList save(ItemList itemList, long listId) {
         var entity = mapper.toEntity(itemList);
         entity.setListId(listId);
-        repository.save(entity);
+        var saved = repository.save(entity);
+        return mapper.toDomain(saved);
     }
 
     @Override

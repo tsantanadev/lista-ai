@@ -24,9 +24,9 @@ public class ItemListServiceImpl implements ItemListService {
     }
 
     @Override
-    public void save(CreateItemListCommand createCommand) {
+    public ItemList save(CreateItemListCommand createCommand) {
         var itemList = new ItemList(null, createCommand.description(), false);
-        repository.save(itemList, createCommand.listId());
+        return repository.save(itemList, createCommand.listId());
     }
 
     @Override
