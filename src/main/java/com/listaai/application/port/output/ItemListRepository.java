@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface ItemListRepository {
     List<ItemList> getItemsList(long listId);
-    void save(ItemList itemList, long listId);
+    ItemList save(ItemList itemList, long listId);
     ItemList update(ItemList itemList, long listId);
     void delete(long listId, long id);
 }

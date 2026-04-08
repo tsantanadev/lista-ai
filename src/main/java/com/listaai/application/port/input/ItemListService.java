@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface ItemListService {
     List<ItemList> getItemsList(long listId);
-    void save(CreateItemListCommand createCommand);
+    ItemList save(CreateItemListCommand createCommand);
     ItemList update(UpdateItemListCommand updateCommand);
     void delete(long listId, long id);
 }

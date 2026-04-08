@@ -56,17 +56,18 @@ public class ItemListController {
     @Operation(summary = "Add an item to a list",
                description = "Creates a new item in the specified shopping list. The item starts as unchecked.")
     @ApiResponses({
-        @ApiResponse(responseCode = "201", description = "Item added successfully"),
+        @ApiResponse(responseCode = "201", description = "Item added successfully",
+            content = @Content(schema = @Schema(implementation = ItemListResponse.class))),
         @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token",
             content = @Content)
     })
-    public ResponseEntity<Void> postItemList(
+    public ResponseEntity<ItemListResponse> postItemList(
             @RequestBody ItemListPostRequest request,
             @Parameter(description = "ID of the shopping list", required = true)
             @PathVariable long listId) {
         var command = mapper.toCreateCommand(request, listId);
-        service.save(command);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        var created = service.save(command);
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(created));
     }
 
     @PutMapping("/{itemId}")
