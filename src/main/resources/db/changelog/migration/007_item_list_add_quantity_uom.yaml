@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-quantity-uom-to-item-list
+      author: tsantanadev
+      changes:
+        - addColumn:
+            tableName: item_list
+            columns:
+              - column:
+                  name: quantity
+                  type: DOUBLE PRECISION
+              - column:
+                  name: uom
+                  type: TEXT
