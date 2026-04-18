@@ -25,6 +25,7 @@ Lista-AI is a RESTful API designed to manage shopping lists and their items. It 
 - ✅ Create and manage multiple shopping lists (per-user ownership)
 - ✅ Add, update, and remove items from lists
 - ✅ Mark items as checked/unchecked
+- ✅ Track item quantity and unit of measure (uom)
 - ✅ Email/password registration and login
 - ✅ Google OAuth2 sign-in
 - ✅ JWT access tokens + rotating opaque refresh tokens
@@ -188,6 +189,8 @@ erDiagram
         bigint list_id FK
         text description
         boolean checked
+        double precision quantity "nullable"
+        text uom "nullable"
     }
 ```
 
@@ -289,7 +292,7 @@ lista-ai/
 │
 ├── src/main/resources/
 │   ├── application.yaml
-│   └── db/changelog/              # Liquibase migrations (001–006)
+│   └── db/changelog/              # Liquibase migrations (001–007)
 │
 └── build.gradle.kts
 ```
