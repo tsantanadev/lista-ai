@@ -79,6 +79,41 @@ public class ItemListControllerIT extends BaseIntegrationTest {
     }
 
     @Test
+    void createItem_withQuantityAndUom_returnsCreatedBody() {
+        String token = defaultUserToken();
+        int listId = seedList(token);
+
+        given()
+            .header("Authorization", "Bearer " + token)
+            .contentType(ContentType.JSON)
+            .body("{\"description\":\"Milk\",\"quantity\":2.0,\"uom\":\"liters\"}")
+        .when()
+            .post("/v1/lists/" + listId + "/items")
+        .then()
+            .statusCode(201)
+            .body("description", equalTo("Milk"))
+            .body("quantity", equalTo(2.0f))
+            .body("uom", equalTo("liters"));
+    }
+
+    @Test
+    void createItem_withoutQuantityAndUom_returnsNullFields() {
+        String token = defaultUserToken();
+        int listId = seedList(token);
+
+        given()
+            .header("Authorization", "Bearer " + token)
+            .contentType(ContentType.JSON)
+            .body("{\"description\":\"Milk\"}")
+        .when()
+            .post("/v1/lists/" + listId + "/items")
+        .then()
+            .statusCode(201)
+            .body("quantity", nullValue())
+            .body("uom", nullValue());
+    }
+
+    @Test
     void updateItem_returns200() {
         String token = defaultUserToken();
         int listId = seedList(token);
@@ -103,6 +138,33 @@ public class ItemListControllerIT extends BaseIntegrationTest {
             .statusCode(200)
             .body("description", equalTo("Butter"))
             .body("checked", equalTo(true));
+    }
+
+    @Test
+    void updateItem_withQuantityAndUom_returnsUpdatedBody() {
+        String token = defaultUserToken();
+        int listId = seedList(token);
+        seedItem(token, listId, "Milk");
+
+        int itemId = given()
+            .header("Authorization", "Bearer " + token)
+        .when()
+            .get("/v1/lists/" + listId + "/items")
+        .then()
+            .statusCode(200)
+            .extract()
+            .path("[0].id");
+
+        given()
+            .header("Authorization", "Bearer " + token)
+            .contentType(ContentType.JSON)
+            .body("{\"description\":\"Milk\",\"checked\":false,\"quantity\":1.5,\"uom\":\"kg\"}")
+        .when()
+            .put("/v1/lists/" + listId + "/items/" + itemId)
+        .then()
+            .statusCode(200)
+            .body("quantity", equalTo(1.5f))
+            .body("uom", equalTo("kg"));
     }
 
     @Test
