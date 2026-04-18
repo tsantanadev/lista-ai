@@ -43,6 +43,8 @@ public class ItemListPersistenceAdapter implements ItemListRepository {
                         "Item %d not found in list %d".formatted(itemList.id(), listId)));
         entity.setDescription(itemList.description());
         entity.setChecked(itemList.checked());
+        entity.setQuantity(itemList.quantity());
+        entity.setUom(itemList.uom());
         var saved = repository.save(entity);
         return mapper.toDomain(saved);
     }

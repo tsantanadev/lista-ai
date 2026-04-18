@@ -20,13 +20,21 @@ public class ItemListEntity {
     @Column
     private boolean checked;
 
+    @Column
+    private Double quantity;
+
+    @Column
+    private String uom;
+
     protected ItemListEntity() {}
 
-    public ItemListEntity(Long id, Long listId, String description, boolean checked) {
+    public ItemListEntity(Long id, Long listId, String description, boolean checked, Double quantity, String uom) {
         this.id = id;
         this.listId = listId;
         this.description = description;
         this.checked = checked;
+        this.quantity = quantity;
+        this.uom = uom;
     }
 
     public Long getId() { return id; }
@@ -36,4 +44,8 @@ public class ItemListEntity {
     public void setDescription(String description) { this.description = description; }
     public boolean isChecked() { return checked; }
     public void setChecked(boolean checked) { this.checked = checked; }
+    public Double getQuantity() { return quantity; }
+    public void setQuantity(Double quantity) { this.quantity = quantity; }
+    public String getUom() { return uom; }
+    public void setUom(String uom) { this.uom = uom; }
 }
