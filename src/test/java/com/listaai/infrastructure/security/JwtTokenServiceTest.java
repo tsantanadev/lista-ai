@@ -20,14 +20,14 @@ class JwtTokenServiceTest {
 
     @Test
     void generateToken_returnsNonNullToken() {
-        User user = new User(42L, "user@example.com", "Test User");
+        User user = new User(42L, "user@example.com", "Test User", true);
         String token = jwtTokenService.generateAccessToken(user);
         assertThat(token).isNotBlank();
     }
 
     @Test
     void extractUserId_returnsCorrectId() {
-        User user = new User(42L, "user@example.com", "Test User");
+        User user = new User(42L, "user@example.com", "Test User", true);
         String token = jwtTokenService.generateAccessToken(user);
         Long userId = jwtTokenService.extractUserId(token);
         assertThat(userId).isEqualTo(42L);
@@ -35,14 +35,14 @@ class JwtTokenServiceTest {
 
     @Test
     void isTokenValid_trueForFreshToken() {
-        User user = new User(1L, "user@example.com", "Test User");
+        User user = new User(1L, "user@example.com", "Test User", true);
         String token = jwtTokenService.generateAccessToken(user);
         assertThat(jwtTokenService.isTokenValid(token)).isTrue();
     }
 
     @Test
     void isTokenValid_falseForTamperedToken() {
-        User user = new User(1L, "user@example.com", "Test User");
+        User user = new User(1L, "user@example.com", "Test User", true);
         String token = jwtTokenService.generateAccessToken(user);
         String tampered = token.substring(0, token.length() - 4) + "xxxx";
         assertThat(jwtTokenService.isTokenValid(tampered)).isFalse();

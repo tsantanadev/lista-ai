@@ -8,6 +8,7 @@ public interface UserRepository {
     Optional<User> findById(Long id);
     Optional<UserWithHash> findByEmailWithHash(String email);
     User save(User user, String passwordHash);
+    void setVerified(Long userId, boolean verified);
 
     record UserWithHash(User user, String passwordHash) {}
 }

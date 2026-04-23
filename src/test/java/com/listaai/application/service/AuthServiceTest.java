@@ -15,10 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.time.Instant;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -34,13 +34,12 @@ class AuthServiceTest {
     @Mock private AuthProviderRegistry authProviderRegistry;
     @Mock private AuthProvider localAuthProvider;
     @Mock private JwtTokenService jwtTokenService;
+    @Mock private PasswordEncoder passwordEncoder;
 
     private AuthService authService;
-    private BCryptPasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
-        passwordEncoder = new BCryptPasswordEncoder(4); // low cost for tests
         authService = new AuthService(
                 userRepository, oAuthIdentityRepository, refreshTokenRepository,
                 authProviderRegistry, jwtTokenService, passwordEncoder, 7
@@ -50,8 +49,9 @@ class AuthServiceTest {
     @Test
     void register_newEmail_returnsTokens() {
         when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode(any())).thenReturn("HASHED");
         when(userRepository.save(any(), anyString()))
-                .thenReturn(new User(1L, "user@example.com", "Test User"));
+                .thenReturn(new User(1L, "user@example.com", "Test User", true));
         when(jwtTokenService.generateAccessToken(any())).thenReturn("access-token");
         when(jwtTokenService.generateRefreshToken()).thenReturn("refresh-token");
         when(jwtTokenService.hashRefreshToken("refresh-token")).thenReturn("hash");
@@ -67,7 +67,7 @@ class AuthServiceTest {
     @Test
     void register_duplicateEmail_throwsException() {
         when(userRepository.findByEmail("user@example.com"))
-                .thenReturn(Optional.of(new User(1L, "user@example.com", "Existing")));
+                .thenReturn(Optional.of(new User(1L, "user@example.com", "Existing", true)));
 
         assertThatThrownBy(() ->
                 authService.register(new RegisterCommand("user@example.com", "pass", "name")))
@@ -81,7 +81,7 @@ class AuthServiceTest {
         when(localAuthProvider.authenticate(any()))
                 .thenReturn(new AuthIdentity("user@example.com", "Test User", null));
         when(userRepository.findByEmail("user@example.com"))
-                .thenReturn(Optional.of(new User(1L, "user@example.com", "Test User")));
+                .thenReturn(Optional.of(new User(1L, "user@example.com", "Test User", true)));
         when(jwtTokenService.generateAccessToken(any())).thenReturn("access-token");
         when(jwtTokenService.generateRefreshToken()).thenReturn("refresh-token");
         when(jwtTokenService.hashRefreshToken("refresh-token")).thenReturn("hash");
@@ -101,7 +101,7 @@ class AuthServiceTest {
                 .thenReturn(Optional.empty());
         when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.empty());
         when(userRepository.save(any(), isNull()))
-                .thenReturn(new User(2L, "user@gmail.com", "Google User"));
+                .thenReturn(new User(2L, "user@gmail.com", "Google User", true));
         when(oAuthIdentityRepository.save(any())).thenReturn(null);
         when(jwtTokenService.generateAccessToken(any())).thenReturn("access-token");
         when(jwtTokenService.generateRefreshToken()).thenReturn("refresh-token");
@@ -125,7 +125,7 @@ class AuthServiceTest {
         when(oAuthIdentityRepository.findByProviderAndProviderUserId("google", "google-sub-123"))
                 .thenReturn(Optional.of(existingIdentity));
         when(userRepository.findById(2L))
-                .thenReturn(Optional.of(new User(2L, "user@gmail.com", "Google User")));
+                .thenReturn(Optional.of(new User(2L, "user@gmail.com", "Google User", true)));
         when(jwtTokenService.generateAccessToken(any())).thenReturn("access-token");
         when(jwtTokenService.generateRefreshToken()).thenReturn("refresh-token");
         when(jwtTokenService.hashRefreshToken("refresh-token")).thenReturn("hash");
@@ -143,7 +143,7 @@ class AuthServiceTest {
         when(refreshTokenRepository.findUserIdByTokenHashIfValid("old-hash"))
                 .thenReturn(Optional.of(1L));
         when(userRepository.findById(1L))
-                .thenReturn(Optional.of(new User(1L, "user@example.com", "Test User")));
+                .thenReturn(Optional.of(new User(1L, "user@example.com", "Test User", true)));
         when(jwtTokenService.generateAccessToken(any())).thenReturn("new-access");
         when(jwtTokenService.generateRefreshToken()).thenReturn("new-refresh");
         when(jwtTokenService.hashRefreshToken("new-refresh")).thenReturn("new-hash");
@@ -170,5 +170,22 @@ class AuthServiceTest {
         when(jwtTokenService.hashRefreshToken("token")).thenReturn("hash");
         authService.logout(new RefreshCommand("token"));
         verify(refreshTokenRepository).revoke("hash");
+    }
+
+    @Test
+    void register_whenFlagOff_savesUserAsVerified() {
+        when(userRepository.findByEmail("new@example.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("pwd")).thenReturn("HASHED");
+        when(userRepository.save(any(User.class), eq("HASHED")))
+            .thenAnswer(inv -> {
+                User u = inv.getArgument(0);
+                return new User(42L, u.email(), u.name(), u.verified());
+            });
+
+        authService.register(new RegisterCommand("new@example.com", "pwd", "New User"));
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture(), eq("HASHED"));
+        assertThat(captor.getValue().verified()).isTrue();
     }
 }

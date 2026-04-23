@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008
+      author: lista-ai
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: verified
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - update:
+            tableName: users
+            columns:
+              - column:
+                  name: verified
+                  valueBoolean: true

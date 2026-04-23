@@ -6,6 +6,7 @@ import com.listaai.infrastructure.adapter.output.persistence.entity.UserEntity;
 import com.listaai.infrastructure.adapter.output.persistence.mapper.UserPersistenceMapper;
 import com.listaai.infrastructure.adapter.output.persistence.repository.UserJpaRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
 @Component
@@ -37,7 +38,13 @@ public class UserPersistenceAdapter implements UserRepository {
 
     @Override
     public User save(User user, String passwordHash) {
-        UserEntity entity = new UserEntity(user.email(), user.name(), passwordHash);
+        UserEntity entity = new UserEntity(user.email(), user.name(), passwordHash, user.verified());
         return mapper.toDomain(jpaRepository.save(entity));
+    }
+
+    @Override
+    @Transactional
+    public void setVerified(Long userId, boolean verified) {
+        jpaRepository.findById(userId).ifPresent(e -> e.setVerified(verified));
     }
 }

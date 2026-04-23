@@ -20,15 +20,19 @@ public class UserEntity {
     @Column(name = "password_hash")
     private String passwordHash;
 
+    @Column(nullable = false)
+    private boolean verified;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     protected UserEntity() {}
 
-    public UserEntity(String email, String name, String passwordHash) {
+    public UserEntity(String email, String name, String passwordHash, boolean verified) {
         this.email = email;
         this.name = name;
         this.passwordHash = passwordHash;
+        this.verified = verified;
         this.createdAt = Instant.now();
     }
 
@@ -36,5 +40,7 @@ public class UserEntity {
     public String getEmail() { return email; }
     public String getName() { return name; }
     public String getPasswordHash() { return passwordHash; }
+    public boolean isVerified() { return verified; }
+    public void setVerified(boolean verified) { this.verified = verified; }
     public Instant getCreatedAt() { return createdAt; }
 }

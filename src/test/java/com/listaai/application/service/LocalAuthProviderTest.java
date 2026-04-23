@@ -41,7 +41,7 @@ class LocalAuthProviderTest {
     void authenticate_validCredentials_returnsAuthIdentity() {
         String rawPassword = "Password123!";
         String hash = passwordEncoder.encode(rawPassword);
-        User user = new User(1L, "user@example.com", "Test User");
+        User user = new User(1L, "user@example.com", "Test User", true);
         UserRepository.UserWithHash userWithHash = new UserRepository.UserWithHash(user, hash);
         when(userRepository.findByEmailWithHash("user@example.com"))
                 .thenReturn(Optional.of(userWithHash));
@@ -53,7 +53,7 @@ class LocalAuthProviderTest {
 
     @Test
     void authenticate_wrongPassword_throwsBadCredentials() {
-        User user = new User(1L, "user@example.com", "Test User");
+        User user = new User(1L, "user@example.com", "Test User", true);
         String hash = passwordEncoder.encode("correct-password");
         UserRepository.UserWithHash userWithHash = new UserRepository.UserWithHash(user, hash);
         when(userRepository.findByEmailWithHash("user@example.com"))

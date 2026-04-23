@@ -54,7 +54,7 @@ public class AuthService implements AuthUseCase {
         }
         String hash = passwordEncoder.encode(command.password());
         User user = userRepository.save(
-                new User(null, command.email(), command.name()), hash);
+                new User(null, command.email(), command.name(), true), hash);
         return issueTokens(user);
     }
 
@@ -84,7 +84,7 @@ public class AuthService implements AuthUseCase {
         } else {
             user = userRepository.findByEmail(identity.email())
                     .orElseGet(() -> userRepository.save(
-                            new User(null, identity.email(), identity.name()), null));
+                            new User(null, identity.email(), identity.name(), true), null));
             oAuthIdentityRepository.save(
                     new OAuthIdentity(null, user.id(), "google", identity.providerUserId()));
         }
