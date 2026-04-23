@@ -19,6 +19,9 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -42,7 +45,8 @@ class AuthServiceTest {
     void setUp() {
         authService = new AuthService(
                 userRepository, oAuthIdentityRepository, refreshTokenRepository,
-                authProviderRegistry, jwtTokenService, passwordEncoder, 7
+                authProviderRegistry, jwtTokenService, passwordEncoder, 7,
+                Clock.systemUTC()
         );
     }
 
@@ -187,5 +191,28 @@ class AuthServiceTest {
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture(), eq("HASHED"));
         assertThat(captor.getValue().verified()).isTrue();
+    }
+
+    @Test
+    void issueTokens_usesInjectedClockForExpiry() {
+        Clock fixed = Clock.fixed(Instant.parse("2026-04-23T10:00:00Z"), ZoneOffset.UTC);
+        AuthService svc = new AuthService(userRepository, oAuthIdentityRepository,
+                refreshTokenRepository, authProviderRegistry, jwtTokenService,
+                passwordEncoder, 7L, fixed);
+
+        when(userRepository.findByEmail("x@x.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode(any())).thenReturn("H");
+        when(userRepository.save(any(User.class), any()))
+            .thenAnswer(inv -> {
+                User u = inv.getArgument(0);
+                return new User(1L, u.email(), u.name(), u.verified());
+            });
+        when(jwtTokenService.generateRefreshToken()).thenReturn("RAW");
+        when(jwtTokenService.hashRefreshToken("RAW")).thenReturn("HASH");
+
+        svc.register(new RegisterCommand("x@x.com", "pwd", "X"));
+
+        verify(refreshTokenRepository).save(eq(1L), eq("HASH"),
+            eq(Instant.parse("2026-04-30T10:00:00Z")));
     }
 }

@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -26,6 +27,7 @@ public class AuthService implements AuthUseCase {
     private final JwtTokenService jwtTokenService;
     private final PasswordEncoder passwordEncoder;
     private final long refreshExpirationDays;
+    private final Clock clock;
 
     private static final long ACCESS_TOKEN_EXPIRY_SECONDS = 900L;
 
@@ -36,7 +38,8 @@ public class AuthService implements AuthUseCase {
             AuthProviderRegistry authProviderRegistry,
             JwtTokenService jwtTokenService,
             PasswordEncoder passwordEncoder,
-            @Value("${app.jwt.refresh-expiration-days}") long refreshExpirationDays) {
+            @Value("${app.jwt.refresh-expiration-days}") long refreshExpirationDays,
+            Clock clock) {
         this.userRepository = userRepository;
         this.oAuthIdentityRepository = oAuthIdentityRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -44,6 +47,7 @@ public class AuthService implements AuthUseCase {
         this.jwtTokenService = jwtTokenService;
         this.passwordEncoder = passwordEncoder;
         this.refreshExpirationDays = refreshExpirationDays;
+        this.clock = clock;
     }
 
     @Override
@@ -116,7 +120,7 @@ public class AuthService implements AuthUseCase {
         String accessToken = jwtTokenService.generateAccessToken(user);
         String refreshToken = jwtTokenService.generateRefreshToken();
         String refreshTokenHash = jwtTokenService.hashRefreshToken(refreshToken);
-        Instant expiresAt = Instant.now().plus(refreshExpirationDays, ChronoUnit.DAYS);
+        Instant expiresAt = clock.instant().plus(refreshExpirationDays, ChronoUnit.DAYS);
         refreshTokenRepository.save(user.id(), refreshTokenHash, expiresAt);
         return new AuthResult(accessToken, refreshToken, ACCESS_TOKEN_EXPIRY_SECONDS);
     }
