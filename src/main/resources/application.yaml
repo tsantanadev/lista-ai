@@ -32,3 +32,16 @@ app:
     google:
       jwks-uri: https://www.googleapis.com/oauth2/v3/certs
       client-id: ${GOOGLE_CLIENT_ID:}
+  email:
+    from-address: ${EMAIL_FROM:noreply@lista-ai.com}
+    provider: resend
+    resend:
+      api-key: ${RESEND_API_KEY:}
+      base-url: ${RESEND_BASE_URL:https://api.resend.com}
+    worker:
+      poll-interval-ms: 10000
+  email-verification:
+    enabled: ${EMAIL_VERIFICATION_ENABLED:true}
+    token-ttl-hours: 24
+    resend-cooldown-seconds: 60
+    redirect-base-url: ${VERIFICATION_REDIRECT_BASE_URL:https://app.lista-ai.com/verify-email}
