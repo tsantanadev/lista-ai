@@ -264,7 +264,7 @@ public class EmailOutboxWorker {
 
 | Method | Path | Request | Responses |
 |---|---|---|---|
-| POST | `/v1/auth/register` | `{email, password, name}` | **202** `{message}` when flag on; **200** `TokenResponse` when flag off |
+| POST | `/v1/auth/register` | `{email, password, name}` | **202** `{message}` when flag on; **201** `TokenResponse` when flag off (existing status) |
 | POST | `/v1/auth/verify-email` | `{token}` | **200** empty · **400** `INVALID_TOKEN` · **410** `TOKEN_EXPIRED` / `TOKEN_SUPERSEDED` |
 | POST | `/v1/auth/resend-verification` | `{email}` | **200** empty (always, no enumeration) · **429** `VERIFICATION_COOLDOWN` (only for real unverified users within 60s) |
 | POST | `/v1/auth/login` | `{email, password}` | unchanged · **403** `EMAIL_NOT_VERIFIED` added when flag on |
