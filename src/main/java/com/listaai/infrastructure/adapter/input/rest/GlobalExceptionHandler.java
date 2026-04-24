@@ -1,5 +1,8 @@
 package com.listaai.infrastructure.adapter.input.rest;
 
+import com.listaai.application.service.exception.InvalidVerificationTokenException;
+import com.listaai.application.service.exception.VerificationTokenExpiredException;
+import com.listaai.application.service.exception.VerificationTokenSupersededException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
@@ -23,5 +26,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidVerificationTokenException.class)
+    public ProblemDetail handleInvalidVerificationToken(InvalidVerificationTokenException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(VerificationTokenExpiredException.class)
+    public ProblemDetail handleVerificationTokenExpired(VerificationTokenExpiredException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.GONE, ex.getMessage());
+    }
+
+    @ExceptionHandler(VerificationTokenSupersededException.class)
+    public ProblemDetail handleVerificationTokenSuperseded(VerificationTokenSupersededException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.GONE, ex.getMessage());
     }
 }

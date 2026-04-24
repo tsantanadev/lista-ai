@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.listaai.application.port.input.*;
 import com.listaai.application.port.input.command.*;
 import com.listaai.application.port.output.*;
+import com.listaai.application.service.exception.InvalidVerificationTokenException;
+import com.listaai.application.service.exception.VerificationTokenExpiredException;
+import com.listaai.application.service.exception.VerificationTokenSupersededException;
+import com.listaai.domain.model.EmailVerificationToken;
 import com.listaai.domain.model.OAuthIdentity;
 import com.listaai.domain.model.User;
 import com.listaai.infrastructure.config.EmailVerificationProperties;
@@ -155,8 +159,19 @@ public class AuthService implements AuthUseCase {
     }
 
     @Override
+    @Transactional
     public void verifyEmail(VerifyEmailCommand command) {
-        throw new UnsupportedOperationException("Task 13");
+        String hash = jwtTokenService.hashRefreshToken(command.token());
+        EmailVerificationToken token = verifyTokenRepository.findByTokenHash(hash)
+                .orElseThrow(InvalidVerificationTokenException::new);
+
+        Instant now = clock.instant();
+        if (token.isRevoked()) throw new VerificationTokenSupersededException();
+        if (token.isExpired(now)) throw new VerificationTokenExpiredException();
+        if (token.isUsed()) return; // idempotent: already verified
+
+        userRepository.setVerified(token.userId(), true);
+        verifyTokenRepository.markUsed(token.id(), now);
     }
 
     @Override

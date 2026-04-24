@@ -1,6 +1,7 @@
 package com.listaai.infrastructure.adapter.input.rest;
 
 import com.listaai.application.port.input.AuthUseCase;
+import com.listaai.application.port.input.command.VerifyEmailCommand;
 import com.listaai.infrastructure.adapter.input.rest.dto.*;
 import com.listaai.infrastructure.adapter.input.rest.mapper.AuthRestMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -89,5 +90,18 @@ public class AuthController {
     public ResponseEntity<Void> logout(@RequestBody RefreshRequest request) {
         authUseCase.logout(mapper.toCommand(request));
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/verify-email")
+    @Operation(summary = "Verify an email address",
+               description = "Consumes a verification token previously emailed to the user.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Verified (or already verified — idempotent)"),
+        @ApiResponse(responseCode = "400", description = "Token is invalid", content = @Content),
+        @ApiResponse(responseCode = "410", description = "Token expired or superseded", content = @Content)
+    })
+    public ResponseEntity<Void> verifyEmail(@RequestBody VerifyEmailRequest request) {
+        authUseCase.verifyEmail(new VerifyEmailCommand(request.token()));
+        return ResponseEntity.ok().build();
     }
 }

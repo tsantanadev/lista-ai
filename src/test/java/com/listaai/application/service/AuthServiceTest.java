@@ -10,6 +10,10 @@ import com.listaai.application.port.output.EmailVerificationTokenRepository;
 import com.listaai.application.port.output.OAuthIdentityRepository;
 import com.listaai.application.port.output.RefreshTokenRepository;
 import com.listaai.application.port.output.UserRepository;
+import com.listaai.application.service.exception.InvalidVerificationTokenException;
+import com.listaai.application.service.exception.VerificationTokenExpiredException;
+import com.listaai.application.service.exception.VerificationTokenSupersededException;
+import com.listaai.domain.model.EmailVerificationToken;
 import com.listaai.domain.model.User;
 import com.listaai.infrastructure.config.EmailVerificationProperties;
 import com.listaai.infrastructure.security.JwtTokenService;
@@ -44,7 +48,9 @@ class AuthServiceTest {
     @Mock private EmailVerificationTokenRepository verifyTokenRepository;
     @Mock private EmailOutboxRepository outboxRepo;
 
-    private final Clock fixedClock = Clock.fixed(Instant.parse("2026-04-23T10:00:00Z"), ZoneOffset.UTC);
+    private static final Instant NOW = Instant.parse("2026-04-23T10:00:00Z");
+
+    private final Clock fixedClock = Clock.fixed(NOW, ZoneOffset.UTC);
 
     private AuthService authService;
 
@@ -283,5 +289,87 @@ class AuthServiceTest {
         assertThat(result.accessToken()).isEqualTo("ACCESS");
         verify(refreshTokenRepository).save(eq(10L), eq("RH"), any(Instant.class));
         verifyNoInteractions(verifyTokenRepository, outboxRepo);
+    }
+
+    @Test
+    void verifyEmail_setsUserVerified_andMarksTokenUsed() {
+        EmailVerificationToken token = new EmailVerificationToken(
+                1L, 42L, NOW.plusSeconds(3600), null, null, NOW);
+        when(jwtTokenService.hashRefreshToken("RAW")).thenReturn("HASH");
+        when(verifyTokenRepository.findByTokenHash("HASH")).thenReturn(Optional.of(token));
+
+        AuthService svc = new AuthService(userRepository, oAuthIdentityRepository,
+                refreshTokenRepository, authProviderRegistry, jwtTokenService,
+                passwordEncoder, 7L, fixedClock, verifyTokenRepository, outboxRepo,
+                new EmailVerificationProperties(false, 24, 60, "https://app.test/verify"));
+
+        svc.verifyEmail(new VerifyEmailCommand("RAW"));
+
+        verify(userRepository).setVerified(42L, true);
+        verify(verifyTokenRepository).markUsed(1L, NOW);
+    }
+
+    @Test
+    void verifyEmail_idempotent_whenAlreadyUsed_noStateChange() {
+        EmailVerificationToken token = new EmailVerificationToken(
+                1L, 42L, NOW.plusSeconds(3600), NOW.minusSeconds(60), null, NOW.minusSeconds(120));
+        when(jwtTokenService.hashRefreshToken("RAW")).thenReturn("HASH");
+        when(verifyTokenRepository.findByTokenHash("HASH")).thenReturn(Optional.of(token));
+
+        AuthService svc = new AuthService(userRepository, oAuthIdentityRepository,
+                refreshTokenRepository, authProviderRegistry, jwtTokenService,
+                passwordEncoder, 7L, fixedClock, verifyTokenRepository, outboxRepo,
+                new EmailVerificationProperties(false, 24, 60, "https://app.test/verify"));
+
+        svc.verifyEmail(new VerifyEmailCommand("RAW"));
+
+        verify(userRepository, never()).setVerified(anyLong(), anyBoolean());
+        verify(verifyTokenRepository, never()).markUsed(anyLong(), any());
+    }
+
+    @Test
+    void verifyEmail_unknownToken_throwsInvalidToken() {
+        when(jwtTokenService.hashRefreshToken("RAW")).thenReturn("HASH");
+        when(verifyTokenRepository.findByTokenHash("HASH")).thenReturn(Optional.empty());
+
+        AuthService svc = new AuthService(userRepository, oAuthIdentityRepository,
+                refreshTokenRepository, authProviderRegistry, jwtTokenService,
+                passwordEncoder, 7L, fixedClock, verifyTokenRepository, outboxRepo,
+                new EmailVerificationProperties(false, 24, 60, "https://app.test/verify"));
+
+        assertThatThrownBy(() -> svc.verifyEmail(new VerifyEmailCommand("RAW")))
+                .isInstanceOf(InvalidVerificationTokenException.class);
+    }
+
+    @Test
+    void verifyEmail_expired_throwsExpired() {
+        EmailVerificationToken token = new EmailVerificationToken(
+                1L, 42L, NOW.minusSeconds(60), null, null, NOW.minusSeconds(3600));
+        when(jwtTokenService.hashRefreshToken("RAW")).thenReturn("HASH");
+        when(verifyTokenRepository.findByTokenHash("HASH")).thenReturn(Optional.of(token));
+
+        AuthService svc = new AuthService(userRepository, oAuthIdentityRepository,
+                refreshTokenRepository, authProviderRegistry, jwtTokenService,
+                passwordEncoder, 7L, fixedClock, verifyTokenRepository, outboxRepo,
+                new EmailVerificationProperties(false, 24, 60, "https://app.test/verify"));
+
+        assertThatThrownBy(() -> svc.verifyEmail(new VerifyEmailCommand("RAW")))
+                .isInstanceOf(VerificationTokenExpiredException.class);
+    }
+
+    @Test
+    void verifyEmail_revoked_throwsSuperseded() {
+        EmailVerificationToken token = new EmailVerificationToken(
+                1L, 42L, NOW.plusSeconds(3600), null, NOW.minusSeconds(60), NOW.minusSeconds(120));
+        when(jwtTokenService.hashRefreshToken("RAW")).thenReturn("HASH");
+        when(verifyTokenRepository.findByTokenHash("HASH")).thenReturn(Optional.of(token));
+
+        AuthService svc = new AuthService(userRepository, oAuthIdentityRepository,
+                refreshTokenRepository, authProviderRegistry, jwtTokenService,
+                passwordEncoder, 7L, fixedClock, verifyTokenRepository, outboxRepo,
+                new EmailVerificationProperties(false, 24, 60, "https://app.test/verify"));
+
+        assertThatThrownBy(() -> svc.verifyEmail(new VerifyEmailCommand("RAW")))
+                .isInstanceOf(VerificationTokenSupersededException.class);
     }
 }
