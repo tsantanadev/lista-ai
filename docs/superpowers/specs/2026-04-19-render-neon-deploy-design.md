@@ -47,6 +47,10 @@ Declarative service definition committed to the repo:
   - `JWT_SECRET`
   - `GOOGLE_CLIENT_ID`
   - `SERVER_PORT` — set to `10000` (Render free tier injects `PORT=10000`)
+  - `RESEND_API_KEY` — Resend API key
+  - `EMAIL_FROM` — from-address (e.g. `noreply@lista-ai.com`)
+  - `EMAIL_VERIFICATION_ENABLED` — `"true"` in prod, `"false"` in tests/dev
+  - `VERIFICATION_REDIRECT_BASE_URL` — `https://app.lista-ai.com/verify-email`
 
 No changes to `application.yaml` are needed — it already reads all connection config from env vars.
 
