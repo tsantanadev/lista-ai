@@ -1,5 +1,6 @@
 package com.listaai.infrastructure.adapter.input.rest;
 
+import com.listaai.application.port.input.AuthResult;
 import com.listaai.application.port.input.AuthUseCase;
 import com.listaai.application.port.input.command.ResendVerificationCommand;
 import com.listaai.application.port.input.command.VerifyEmailCommand;
@@ -30,15 +31,26 @@ public class AuthController {
 
     @PostMapping("/register")
     @Operation(summary = "Register a new user",
-               description = "Creates a new user account and returns a JWT access token and refresh token.")
+               description = """
+                       Creates a new user account. When email-verification is enabled, \
+                       returns 202 Accepted and sends a verification email; no tokens \
+                       are issued until the user verifies. When disabled, returns 201 \
+                       with tokens (legacy behavior).""")
     @ApiResponses({
-        @ApiResponse(responseCode = "201", description = "User registered successfully",
+        @ApiResponse(responseCode = "201", description = "User registered (flag off) — tokens returned",
             content = @Content(schema = @Schema(implementation = TokenResponse.class))),
+        @ApiResponse(responseCode = "202", description = "User registered (flag on) — verification email sent",
+            content = @Content(schema = @Schema(implementation = RegisterPendingResponse.class))),
         @ApiResponse(responseCode = "409", description = "Email already registered",
             content = @Content)
     })
-    public ResponseEntity<TokenResponse> register(@RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(authUseCase.register(mapper.toCommand(request))));
+    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+        AuthResult result = authUseCase.register(mapper.toCommand(request));
+        if (result == null) {
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
+                    .body(new RegisterPendingResponse("Check your email to verify your account."));
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(result));
     }
 
     @PostMapping("/login")
