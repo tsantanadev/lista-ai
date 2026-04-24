@@ -39,7 +39,7 @@ public class LocalAuthProvider implements AuthProvider {
         return new AuthIdentity(
                 userWithHash.user().email(),
                 userWithHash.user().name(),
-                null // no provider user ID for local auth
-        );
+                null,                                   // no provider user ID for local auth
+                userWithHash.user().verified());        // current verification state
     }
 }

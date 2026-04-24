@@ -83,7 +83,7 @@ class AuthServiceTest {
     void loginLocal_validCredentials_returnsTokens() {
         when(authProviderRegistry.get("local")).thenReturn(localAuthProvider);
         when(localAuthProvider.authenticate(any()))
-                .thenReturn(new AuthIdentity("user@example.com", "Test User", null));
+                .thenReturn(new AuthIdentity("user@example.com", "Test User", null, true));
         when(userRepository.findByEmail("user@example.com"))
                 .thenReturn(Optional.of(new User(1L, "user@example.com", "Test User", true)));
         when(jwtTokenService.generateAccessToken(any())).thenReturn("access-token");
@@ -100,7 +100,7 @@ class AuthServiceTest {
         AuthProvider googleProvider = mock(AuthProvider.class);
         when(authProviderRegistry.get("google")).thenReturn(googleProvider);
         when(googleProvider.authenticate(any()))
-                .thenReturn(new AuthIdentity("user@gmail.com", "Google User", "google-sub-123"));
+                .thenReturn(new AuthIdentity("user@gmail.com", "Google User", "google-sub-123", true));
         when(oAuthIdentityRepository.findByProviderAndProviderUserId("google", "google-sub-123"))
                 .thenReturn(Optional.empty());
         when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.empty());
@@ -122,7 +122,7 @@ class AuthServiceTest {
         AuthProvider googleProvider = mock(AuthProvider.class);
         when(authProviderRegistry.get("google")).thenReturn(googleProvider);
         when(googleProvider.authenticate(any()))
-                .thenReturn(new AuthIdentity("user@gmail.com", "Google User", "google-sub-123"));
+                .thenReturn(new AuthIdentity("user@gmail.com", "Google User", "google-sub-123", true));
 
         com.listaai.domain.model.OAuthIdentity existingIdentity =
                 new com.listaai.domain.model.OAuthIdentity(1L, 2L, "google", "google-sub-123");

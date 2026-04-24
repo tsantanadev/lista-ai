@@ -2,6 +2,8 @@ package com.listaai.application.service;
 
 import com.listaai.application.port.input.*;
 import com.listaai.application.port.input.command.*;
+import com.listaai.application.port.input.command.VerifyEmailCommand;
+import com.listaai.application.port.input.command.ResendVerificationCommand;
 import com.listaai.application.port.output.*;
 import com.listaai.domain.model.OAuthIdentity;
 import com.listaai.domain.model.User;
@@ -114,6 +116,16 @@ public class AuthService implements AuthUseCase {
     public void logout(RefreshCommand command) {
         String tokenHash = jwtTokenService.hashRefreshToken(command.refreshToken());
         refreshTokenRepository.revoke(tokenHash);
+    }
+
+    @Override
+    public void verifyEmail(VerifyEmailCommand command) {
+        throw new UnsupportedOperationException("Task 13");
+    }
+
+    @Override
+    public void resendVerification(ResendVerificationCommand command) {
+        throw new UnsupportedOperationException("Task 14");
     }
 
     private AuthResult issueTokens(User user) {

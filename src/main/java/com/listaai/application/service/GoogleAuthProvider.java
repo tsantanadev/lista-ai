@@ -59,10 +59,11 @@ public class GoogleAuthProvider implements AuthProvider {
         } catch (JwtException e) {
             throw new BadCredentialsException("Invalid Google ID token: " + e.getMessage(), e);
         }
+        Boolean emailVerified = jwt.getClaimAsBoolean("email_verified");
         return new AuthIdentity(
                 jwt.getClaimAsString("email"),
                 jwt.getClaimAsString("name"),
-                jwt.getSubject()
-        );
+                jwt.getSubject(),
+                Boolean.TRUE.equals(emailVerified));
     }
 }
