@@ -1,6 +1,7 @@
 package com.listaai.infrastructure.adapter.input.rest;
 
 import com.listaai.application.service.exception.InvalidVerificationTokenException;
+import com.listaai.application.service.exception.VerificationCooldownException;
 import com.listaai.application.service.exception.VerificationTokenExpiredException;
 import com.listaai.application.service.exception.VerificationTokenSupersededException;
 import org.springframework.http.HttpStatus;
@@ -41,5 +42,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(VerificationTokenSupersededException.class)
     public ProblemDetail handleVerificationTokenSuperseded(VerificationTokenSupersededException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.GONE, ex.getMessage());
+    }
+
+    @ExceptionHandler(VerificationCooldownException.class)
+    public ProblemDetail handleCooldown(VerificationCooldownException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
     }
 }

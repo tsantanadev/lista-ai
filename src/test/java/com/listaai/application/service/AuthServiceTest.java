@@ -11,6 +11,7 @@ import com.listaai.application.port.output.OAuthIdentityRepository;
 import com.listaai.application.port.output.RefreshTokenRepository;
 import com.listaai.application.port.output.UserRepository;
 import com.listaai.application.service.exception.InvalidVerificationTokenException;
+import com.listaai.application.service.exception.VerificationCooldownException;
 import com.listaai.application.service.exception.VerificationTokenExpiredException;
 import com.listaai.application.service.exception.VerificationTokenSupersededException;
 import com.listaai.domain.model.EmailVerificationToken;
@@ -371,5 +372,65 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> svc.verifyEmail(new VerifyEmailCommand("RAW")))
                 .isInstanceOf(VerificationTokenSupersededException.class);
+    }
+
+    @Test
+    void resend_forUnknownEmail_returnsSilently() {
+        when(userRepository.findByEmail("x@x.com")).thenReturn(Optional.empty());
+        authService.resendVerification(new ResendVerificationCommand("x@x.com"));
+        verifyNoInteractions(verifyTokenRepository, outboxRepo);
+    }
+
+    @Test
+    void resend_forAlreadyVerifiedUser_returnsSilently() {
+        when(userRepository.findByEmail("v@x.com"))
+            .thenReturn(Optional.of(new User(1L, "v@x.com", "V", true)));
+        authService.resendVerification(new ResendVerificationCommand("v@x.com"));
+        verifyNoInteractions(verifyTokenRepository, outboxRepo);
+    }
+
+    @Test
+    void resend_withinCooldown_throws429() {
+        when(userRepository.findByEmail("u@x.com"))
+            .thenReturn(Optional.of(new User(1L, "u@x.com", "U", false)));
+        EmailVerificationToken recent = new EmailVerificationToken(
+                9L, 1L, NOW.plusSeconds(3600), null, null, NOW.minusSeconds(30));
+        when(verifyTokenRepository.findLatestByUserId(1L)).thenReturn(Optional.of(recent));
+
+        assertThatThrownBy(() -> authService.resendVerification(new ResendVerificationCommand("u@x.com")))
+                .isInstanceOf(VerificationCooldownException.class);
+        verifyNoInteractions(outboxRepo);
+    }
+
+    @Test
+    void resend_afterCooldown_revokesOldAndIssuesNew() {
+        when(userRepository.findByEmail("u@x.com"))
+            .thenReturn(Optional.of(new User(1L, "u@x.com", "U", false)));
+        EmailVerificationToken old = new EmailVerificationToken(
+                9L, 1L, NOW.plusSeconds(3600), null, null, NOW.minusSeconds(120));
+        when(verifyTokenRepository.findLatestByUserId(1L)).thenReturn(Optional.of(old));
+        when(jwtTokenService.generateRefreshToken()).thenReturn("NEW_RAW");
+        when(jwtTokenService.hashRefreshToken("NEW_RAW")).thenReturn("NEW_HASH");
+
+        authService.resendVerification(new ResendVerificationCommand("u@x.com"));
+
+        verify(verifyTokenRepository).markRevoked(9L, NOW);
+        verify(verifyTokenRepository).save(eq(1L), eq("NEW_HASH"), any(Instant.class), any(Instant.class));
+        verify(outboxRepo).enqueue(eq("VERIFY_EMAIL"), eq("u@x.com"), contains("NEW_RAW"), any(Instant.class));
+    }
+
+    @Test
+    void resend_firstTime_noPriorToken_issuesNew() {
+        when(userRepository.findByEmail("u@x.com"))
+            .thenReturn(Optional.of(new User(1L, "u@x.com", "U", false)));
+        when(verifyTokenRepository.findLatestByUserId(1L)).thenReturn(Optional.empty());
+        when(jwtTokenService.generateRefreshToken()).thenReturn("NEW_RAW");
+        when(jwtTokenService.hashRefreshToken("NEW_RAW")).thenReturn("NEW_HASH");
+
+        authService.resendVerification(new ResendVerificationCommand("u@x.com"));
+
+        verify(verifyTokenRepository, never()).markRevoked(anyLong(), any());
+        verify(verifyTokenRepository).save(eq(1L), eq("NEW_HASH"), any(Instant.class), any(Instant.class));
+        verify(outboxRepo).enqueue(eq("VERIFY_EMAIL"), eq("u@x.com"), contains("NEW_RAW"), any(Instant.class));
     }
 }

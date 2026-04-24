@@ -1,6 +1,7 @@
 package com.listaai.infrastructure.adapter.input.rest;
 
 import com.listaai.application.port.input.AuthUseCase;
+import com.listaai.application.port.input.command.ResendVerificationCommand;
 import com.listaai.application.port.input.command.VerifyEmailCommand;
 import com.listaai.infrastructure.adapter.input.rest.dto.*;
 import com.listaai.infrastructure.adapter.input.rest.mapper.AuthRestMapper;
@@ -102,6 +103,18 @@ public class AuthController {
     })
     public ResponseEntity<Void> verifyEmail(@RequestBody VerifyEmailRequest request) {
         authUseCase.verifyEmail(new VerifyEmailCommand(request.token()));
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/resend-verification")
+    @Operation(summary = "Resend verification email",
+               description = "Sends a fresh verification email. Always returns 200 to avoid account enumeration.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Request accepted"),
+        @ApiResponse(responseCode = "429", description = "Cooldown — try again shortly", content = @Content)
+    })
+    public ResponseEntity<Void> resendVerification(@RequestBody ResendVerificationRequest request) {
+        authUseCase.resendVerification(new ResendVerificationCommand(request.email()));
         return ResponseEntity.ok().build();
     }
 }

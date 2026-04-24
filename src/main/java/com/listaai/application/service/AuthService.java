@@ -6,6 +6,7 @@ import com.listaai.application.port.input.*;
 import com.listaai.application.port.input.command.*;
 import com.listaai.application.port.output.*;
 import com.listaai.application.service.exception.InvalidVerificationTokenException;
+import com.listaai.application.service.exception.VerificationCooldownException;
 import com.listaai.application.service.exception.VerificationTokenExpiredException;
 import com.listaai.application.service.exception.VerificationTokenSupersededException;
 import com.listaai.domain.model.EmailVerificationToken;
@@ -175,8 +176,27 @@ public class AuthService implements AuthUseCase {
     }
 
     @Override
+    @Transactional
     public void resendVerification(ResendVerificationCommand command) {
-        throw new UnsupportedOperationException("Task 14");
+        Optional<User> maybeUser = userRepository.findByEmail(command.email());
+        if (maybeUser.isEmpty()) return;
+        User user = maybeUser.get();
+        if (user.verified()) return;
+
+        Instant now = clock.instant();
+        Optional<EmailVerificationToken> latest = verifyTokenRepository.findLatestByUserId(user.id());
+
+        latest.ifPresent(t -> {
+            long elapsed = now.getEpochSecond() - t.createdAt().getEpochSecond();
+            if (elapsed < verificationProperties.resendCooldownSeconds()) {
+                throw new VerificationCooldownException();
+            }
+            if (!t.isUsed() && !t.isRevoked()) {
+                verifyTokenRepository.markRevoked(t.id(), now);
+            }
+        });
+
+        issueVerificationEmail(user);
     }
 
     private AuthResult issueTokens(User user) {
