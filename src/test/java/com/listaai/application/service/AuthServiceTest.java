@@ -10,6 +10,7 @@ import com.listaai.application.port.output.EmailVerificationTokenRepository;
 import com.listaai.application.port.output.OAuthIdentityRepository;
 import com.listaai.application.port.output.RefreshTokenRepository;
 import com.listaai.application.port.output.UserRepository;
+import com.listaai.application.service.exception.EmailNotVerifiedException;
 import com.listaai.application.service.exception.InvalidVerificationTokenException;
 import com.listaai.application.service.exception.VerificationCooldownException;
 import com.listaai.application.service.exception.VerificationTokenExpiredException;
@@ -432,5 +433,45 @@ class AuthServiceTest {
         verify(verifyTokenRepository, never()).markRevoked(anyLong(), any());
         verify(verifyTokenRepository).save(eq(1L), eq("NEW_HASH"), any(Instant.class), any(Instant.class));
         verify(outboxRepo).enqueue(eq("VERIFY_EMAIL"), eq("u@x.com"), contains("NEW_RAW"), any(Instant.class));
+    }
+
+    @Test
+    void loginLocal_whenFlagOn_andUnverifiedUser_throwsEmailNotVerified() {
+        EmailVerificationProperties verifyProps = new EmailVerificationProperties(
+                true, 24, 60, "https://app.test/verify");
+        AuthService svc = new AuthService(userRepository, oAuthIdentityRepository,
+                refreshTokenRepository, authProviderRegistry, jwtTokenService,
+                passwordEncoder, 7L, fixedClock, verifyTokenRepository, outboxRepo, verifyProps);
+
+        User unverified = new User(1L, "u@x.com", "U", false);
+        AuthProvider localProvider = mock(AuthProvider.class);
+        when(authProviderRegistry.get("local")).thenReturn(localProvider);
+        when(localProvider.authenticate(any())).thenReturn(new AuthIdentity("u@x.com", "U", null, false));
+        when(userRepository.findByEmail("u@x.com")).thenReturn(Optional.of(unverified));
+
+        assertThatThrownBy(() -> svc.loginLocal(new LoginCommand("u@x.com", "pw")))
+                .isInstanceOf(EmailNotVerifiedException.class);
+        verifyNoInteractions(refreshTokenRepository);
+    }
+
+    @Test
+    void loginLocal_whenFlagOff_andUnverifiedUser_succeeds() {
+        EmailVerificationProperties verifyProps = new EmailVerificationProperties(
+                false, 24, 60, "https://app.test/verify");
+        AuthService svc = new AuthService(userRepository, oAuthIdentityRepository,
+                refreshTokenRepository, authProviderRegistry, jwtTokenService,
+                passwordEncoder, 7L, fixedClock, verifyTokenRepository, outboxRepo, verifyProps);
+
+        User unverified = new User(1L, "u@x.com", "U", false);
+        AuthProvider localProvider = mock(AuthProvider.class);
+        when(authProviderRegistry.get("local")).thenReturn(localProvider);
+        when(localProvider.authenticate(any())).thenReturn(new AuthIdentity("u@x.com", "U", null, false));
+        when(userRepository.findByEmail("u@x.com")).thenReturn(Optional.of(unverified));
+        when(jwtTokenService.generateAccessToken(any())).thenReturn("ACCESS");
+        when(jwtTokenService.generateRefreshToken()).thenReturn("RT");
+        when(jwtTokenService.hashRefreshToken("RT")).thenReturn("RTH");
+
+        AuthResult result = svc.loginLocal(new LoginCommand("u@x.com", "pw"));
+        assertThat(result).isNotNull();
     }
 }

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.listaai.application.port.input.*;
 import com.listaai.application.port.input.command.*;
 import com.listaai.application.port.output.*;
+import com.listaai.application.service.exception.EmailNotVerifiedException;
 import com.listaai.application.service.exception.InvalidVerificationTokenException;
 import com.listaai.application.service.exception.VerificationCooldownException;
 import com.listaai.application.service.exception.VerificationTokenExpiredException;
@@ -112,6 +113,9 @@ public class AuthService implements AuthUseCase {
         AuthIdentity identity = provider.authenticate(command);
         User user = userRepository.findByEmail(identity.email())
                 .orElseThrow(() -> new BadCredentialsException("User not found"));
+        if (verificationProperties.enabled() && !user.verified()) {
+            throw new EmailNotVerifiedException();
+        }
         return issueTokens(user);
     }
 
@@ -131,9 +135,14 @@ public class AuthService implements AuthUseCase {
         } else {
             user = userRepository.findByEmail(identity.email())
                     .orElseGet(() -> userRepository.save(
-                            new User(null, identity.email(), identity.name(), true), null));
+                            new User(null, identity.email(), identity.name(),
+                                    identity.emailVerified() || !verificationProperties.enabled()),
+                            null));
             oAuthIdentityRepository.save(
                     new OAuthIdentity(null, user.id(), "google", identity.providerUserId()));
+        }
+        if (verificationProperties.enabled() && !user.verified()) {
+            throw new EmailNotVerifiedException();
         }
         return issueTokens(user);
     }
