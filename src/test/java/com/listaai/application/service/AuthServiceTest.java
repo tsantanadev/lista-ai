@@ -5,10 +5,13 @@ import com.listaai.application.port.input.AuthProvider;
 import com.listaai.application.port.input.AuthProviderRegistry;
 import com.listaai.application.port.input.AuthResult;
 import com.listaai.application.port.input.command.*;
+import com.listaai.application.port.output.EmailOutboxRepository;
+import com.listaai.application.port.output.EmailVerificationTokenRepository;
 import com.listaai.application.port.output.OAuthIdentityRepository;
 import com.listaai.application.port.output.RefreshTokenRepository;
 import com.listaai.application.port.output.UserRepository;
 import com.listaai.domain.model.User;
+import com.listaai.infrastructure.config.EmailVerificationProperties;
 import com.listaai.infrastructure.security.JwtTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +41,10 @@ class AuthServiceTest {
     @Mock private AuthProvider localAuthProvider;
     @Mock private JwtTokenService jwtTokenService;
     @Mock private PasswordEncoder passwordEncoder;
+    @Mock private EmailVerificationTokenRepository verifyTokenRepository;
+    @Mock private EmailOutboxRepository outboxRepo;
+
+    private final Clock fixedClock = Clock.fixed(Instant.parse("2026-04-23T10:00:00Z"), ZoneOffset.UTC);
 
     private AuthService authService;
 
@@ -46,7 +53,8 @@ class AuthServiceTest {
         authService = new AuthService(
                 userRepository, oAuthIdentityRepository, refreshTokenRepository,
                 authProviderRegistry, jwtTokenService, passwordEncoder, 7,
-                Clock.systemUTC()
+                Clock.systemUTC(), verifyTokenRepository, outboxRepo,
+                new EmailVerificationProperties(false, 24, 60, "https://app.test/verify")
         );
     }
 
@@ -198,7 +206,8 @@ class AuthServiceTest {
         Clock fixed = Clock.fixed(Instant.parse("2026-04-23T10:00:00Z"), ZoneOffset.UTC);
         AuthService svc = new AuthService(userRepository, oAuthIdentityRepository,
                 refreshTokenRepository, authProviderRegistry, jwtTokenService,
-                passwordEncoder, 7L, fixed);
+                passwordEncoder, 7L, fixed, verifyTokenRepository, outboxRepo,
+                new EmailVerificationProperties(false, 24, 60, "https://app.test/verify"));
 
         when(userRepository.findByEmail("x@x.com")).thenReturn(Optional.empty());
         when(passwordEncoder.encode(any())).thenReturn("H");
@@ -214,5 +223,65 @@ class AuthServiceTest {
 
         verify(refreshTokenRepository).save(eq(1L), eq("HASH"),
             eq(Instant.parse("2026-04-30T10:00:00Z")));
+    }
+
+    @Test
+    void register_whenFlagOn_createsUnverifiedUser_issuesVerificationToken_enqueuesOutbox_returnsNull() {
+        EmailVerificationProperties verifyProps = new EmailVerificationProperties(
+                true, 24, 60, "https://app.test/verify");
+
+        AuthService svc = new AuthService(userRepository, oAuthIdentityRepository,
+                refreshTokenRepository, authProviderRegistry, jwtTokenService,
+                passwordEncoder, 7L, fixedClock, verifyTokenRepository, outboxRepo, verifyProps);
+
+        when(userRepository.findByEmail("a@b.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("pw")).thenReturn("H");
+        when(userRepository.save(any(User.class), eq("H")))
+            .thenAnswer(inv -> {
+                User u = inv.getArgument(0);
+                return new User(10L, u.email(), u.name(), u.verified());
+            });
+        when(jwtTokenService.generateRefreshToken()).thenReturn("RAW_VTOKEN");
+        when(jwtTokenService.hashRefreshToken("RAW_VTOKEN")).thenReturn("HASHED_VTOKEN");
+
+        AuthResult result = svc.register(new RegisterCommand("a@b.com", "pw", "A"));
+
+        assertThat(result).isNull();
+
+        ArgumentCaptor<User> userCap = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCap.capture(), eq("H"));
+        assertThat(userCap.getValue().verified()).isFalse();
+
+        verify(verifyTokenRepository).save(eq(10L), eq("HASHED_VTOKEN"), any(Instant.class), any(Instant.class));
+        verify(outboxRepo).enqueue(eq("VERIFY_EMAIL"), eq("a@b.com"), contains("RAW_VTOKEN"), any(Instant.class));
+        verifyNoInteractions(refreshTokenRepository);
+    }
+
+    @Test
+    void register_whenFlagOff_existingFastPathUnchanged() {
+        EmailVerificationProperties verifyProps = new EmailVerificationProperties(
+                false, 24, 60, "https://app.test/verify");
+
+        AuthService svc = new AuthService(userRepository, oAuthIdentityRepository,
+                refreshTokenRepository, authProviderRegistry, jwtTokenService,
+                passwordEncoder, 7L, fixedClock, verifyTokenRepository, outboxRepo, verifyProps);
+
+        when(userRepository.findByEmail("a@b.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("pw")).thenReturn("H");
+        when(userRepository.save(any(User.class), eq("H")))
+            .thenAnswer(inv -> {
+                User u = inv.getArgument(0);
+                return new User(10L, u.email(), u.name(), u.verified());
+            });
+        when(jwtTokenService.generateAccessToken(any())).thenReturn("ACCESS");
+        when(jwtTokenService.generateRefreshToken()).thenReturn("REFRESH");
+        when(jwtTokenService.hashRefreshToken("REFRESH")).thenReturn("RH");
+
+        AuthResult result = svc.register(new RegisterCommand("a@b.com", "pw", "A"));
+
+        assertThat(result).isNotNull();
+        assertThat(result.accessToken()).isEqualTo("ACCESS");
+        verify(refreshTokenRepository).save(eq(10L), eq("RH"), any(Instant.class));
+        verifyNoInteractions(verifyTokenRepository, outboxRepo);
     }
 }
