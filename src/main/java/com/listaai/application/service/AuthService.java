@@ -2,8 +2,6 @@ package com.listaai.application.service;
 
 import com.listaai.application.port.input.*;
 import com.listaai.application.port.input.command.*;
-import com.listaai.application.port.input.command.VerifyEmailCommand;
-import com.listaai.application.port.input.command.ResendVerificationCommand;
 import com.listaai.application.port.output.*;
 import com.listaai.domain.model.OAuthIdentity;
 import com.listaai.domain.model.User;
