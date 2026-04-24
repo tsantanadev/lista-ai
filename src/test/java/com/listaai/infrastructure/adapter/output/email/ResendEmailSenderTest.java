@@ -7,10 +7,8 @@ import com.listaai.infrastructure.config.EmailProperties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.client.RestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ResendEmailSenderTest {
@@ -26,7 +24,7 @@ class ResendEmailSenderTest {
                 "noreply@test.local", "resend",
                 new EmailProperties.Resend("key-xyz", "http://localhost:" + wm.port()),
                 new EmailProperties.Worker(10000));
-        sender = new ResendEmailSender(props, RestClient.builder());
+        sender = new ResendEmailSender(props);
     }
 
     @AfterEach

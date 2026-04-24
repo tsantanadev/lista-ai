@@ -4,7 +4,6 @@ import com.listaai.application.port.output.EmailMessage;
 import com.listaai.application.port.output.EmailSender;
 import com.listaai.application.service.exception.EmailSendException;
 import com.listaai.infrastructure.config.EmailProperties;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -25,13 +24,12 @@ public class ResendEmailSender implements EmailSender {
     private final EmailProperties props;
     private final RestClient client;
 
-    @Autowired
-    public ResendEmailSender(EmailProperties props, RestClient.Builder builder) {
+    public ResendEmailSender(EmailProperties props) {
         this.props = props;
         HttpClient httpClient = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
                 .build();
-        this.client = builder
+        this.client = RestClient.builder()
                 .requestFactory(new JdkClientHttpRequestFactory(httpClient))
                 .baseUrl(props.resend().baseUrl())
                 .build();
