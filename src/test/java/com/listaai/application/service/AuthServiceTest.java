@@ -59,7 +59,7 @@ class AuthServiceTest {
         authService = new AuthService(
                 userRepository, oAuthIdentityRepository, refreshTokenRepository,
                 authProviderRegistry, jwtTokenService, passwordEncoder, 7,
-                Clock.systemUTC(), verifyTokenRepository, outboxRepo,
+                fixedClock, verifyTokenRepository, outboxRepo,
                 new EmailVerificationProperties(false, 24, 60, "https://app.test/verify")
         );
     }
