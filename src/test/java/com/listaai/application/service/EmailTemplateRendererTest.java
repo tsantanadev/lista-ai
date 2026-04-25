@@ -43,4 +43,12 @@ class EmailTemplateRendererTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("UNKNOWN");
     }
+
+    @Test
+    void throws_on_malformed_payload_json() {
+        OutboxRow row = new OutboxRow(1L, "VERIFY_EMAIL", "a@b", "{not json", 0);
+        assertThatThrownBy(() -> renderer.render(row))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Malformed outbox payload");
+    }
 }

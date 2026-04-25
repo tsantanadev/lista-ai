@@ -455,6 +455,94 @@ class AuthServiceTest {
     }
 
     @Test
+    void loginGoogle_whenFlagOn_andUnverifiedUser_throwsEmailNotVerified() {
+        EmailVerificationProperties verifyProps = new EmailVerificationProperties(
+                true, 24, 60, "https://app.test/verify");
+        AuthService svc = new AuthService(userRepository, oAuthIdentityRepository,
+                refreshTokenRepository, authProviderRegistry, jwtTokenService,
+                passwordEncoder, 7L, fixedClock, verifyTokenRepository, outboxRepo, verifyProps);
+
+        AuthProvider googleProvider = mock(AuthProvider.class);
+        when(authProviderRegistry.get("google")).thenReturn(googleProvider);
+        when(googleProvider.authenticate(any()))
+                .thenReturn(new AuthIdentity("u@gmail.com", "U", "sub-9", false));
+        com.listaai.domain.model.OAuthIdentity identity =
+                new com.listaai.domain.model.OAuthIdentity(1L, 5L, "google", "sub-9");
+        when(oAuthIdentityRepository.findByProviderAndProviderUserId("google", "sub-9"))
+                .thenReturn(Optional.of(identity));
+        when(userRepository.findById(5L))
+                .thenReturn(Optional.of(new User(5L, "u@gmail.com", "U", false)));
+
+        assertThatThrownBy(() -> svc.loginGoogle(new GoogleAuthCommand("id-token")))
+                .isInstanceOf(EmailNotVerifiedException.class);
+        verifyNoInteractions(refreshTokenRepository);
+    }
+
+    @Test
+    void loginGoogle_whenFlagOn_andGoogleIdentityNotVerified_createsUnverifiedUser() {
+        EmailVerificationProperties verifyProps = new EmailVerificationProperties(
+                true, 24, 60, "https://app.test/verify");
+        AuthService svc = new AuthService(userRepository, oAuthIdentityRepository,
+                refreshTokenRepository, authProviderRegistry, jwtTokenService,
+                passwordEncoder, 7L, fixedClock, verifyTokenRepository, outboxRepo, verifyProps);
+
+        AuthProvider googleProvider = mock(AuthProvider.class);
+        when(authProviderRegistry.get("google")).thenReturn(googleProvider);
+        when(googleProvider.authenticate(any()))
+                .thenReturn(new AuthIdentity("u@gmail.com", "U", "sub-10", false));
+        when(oAuthIdentityRepository.findByProviderAndProviderUserId("google", "sub-10"))
+                .thenReturn(Optional.empty());
+        when(userRepository.findByEmail("u@gmail.com")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class), isNull()))
+                .thenAnswer(inv -> {
+                    User u = inv.getArgument(0);
+                    return new User(7L, u.email(), u.name(), u.verified());
+                });
+
+        assertThatThrownBy(() -> svc.loginGoogle(new GoogleAuthCommand("id-token")))
+                .isInstanceOf(EmailNotVerifiedException.class);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture(), isNull());
+        assertThat(captor.getValue().verified()).isFalse();
+    }
+
+    @Test
+    void resend_whenPriorTokenAlreadyUsed_skipsRevoke_andIssuesNew() {
+        when(userRepository.findByEmail("u@x.com"))
+                .thenReturn(Optional.of(new User(1L, "u@x.com", "U", false)));
+        // Prior token: past cooldown AND already used
+        EmailVerificationToken used = new EmailVerificationToken(
+                9L, 1L, NOW.plusSeconds(3600), NOW.minusSeconds(60), null, NOW.minusSeconds(120));
+        when(verifyTokenRepository.findLatestByUserId(1L)).thenReturn(Optional.of(used));
+        when(jwtTokenService.generateRefreshToken()).thenReturn("NEW_RAW");
+        when(jwtTokenService.hashRefreshToken("NEW_RAW")).thenReturn("NEW_HASH");
+
+        authService.resendVerification(new ResendVerificationCommand("u@x.com"));
+
+        verify(verifyTokenRepository, never()).markRevoked(anyLong(), any());
+        verify(verifyTokenRepository).save(eq(1L), eq("NEW_HASH"), any(Instant.class), any(Instant.class));
+        verify(outboxRepo).enqueue(eq("VERIFY_EMAIL"), eq("u@x.com"), contains("NEW_RAW"), any(Instant.class));
+    }
+
+    @Test
+    void resend_whenPriorTokenRevoked_skipsRevoke_andIssuesNew() {
+        when(userRepository.findByEmail("u@x.com"))
+                .thenReturn(Optional.of(new User(1L, "u@x.com", "U", false)));
+        // Prior token: past cooldown AND already revoked (not used)
+        EmailVerificationToken revoked = new EmailVerificationToken(
+                9L, 1L, NOW.plusSeconds(3600), null, NOW.minusSeconds(60), NOW.minusSeconds(120));
+        when(verifyTokenRepository.findLatestByUserId(1L)).thenReturn(Optional.of(revoked));
+        when(jwtTokenService.generateRefreshToken()).thenReturn("NEW_RAW");
+        when(jwtTokenService.hashRefreshToken("NEW_RAW")).thenReturn("NEW_HASH");
+
+        authService.resendVerification(new ResendVerificationCommand("u@x.com"));
+
+        verify(verifyTokenRepository, never()).markRevoked(anyLong(), any());
+        verify(verifyTokenRepository).save(eq(1L), eq("NEW_HASH"), any(Instant.class), any(Instant.class));
+    }
+
+    @Test
     void loginLocal_whenFlagOff_andUnverifiedUser_succeeds() {
         EmailVerificationProperties verifyProps = new EmailVerificationProperties(
                 false, 24, 60, "https://app.test/verify");
