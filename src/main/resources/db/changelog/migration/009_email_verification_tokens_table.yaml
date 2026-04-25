@@ -1,0 +1,52 @@
+databaseChangeLog:
+  - changeSet:
+      id: 009
+      author: lista-ai
+      changes:
+        - createTable:
+            tableName: email_verification_tokens
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_evt_user
+                    references: users(id)
+                    deleteCascade: true
+              - column:
+                  name: token_hash
+                  type: TEXT
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: expires_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: used_at
+                  type: TIMESTAMP
+              - column:
+                  name: revoked_at
+                  type: TIMESTAMP
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueDate: now()
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: idx_evt_user_id
+            tableName: email_verification_tokens
+            columns:
+              - column:
+                  name: user_id

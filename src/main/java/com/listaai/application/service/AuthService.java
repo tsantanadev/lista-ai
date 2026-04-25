@@ -1,10 +1,19 @@
 package com.listaai.application.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.listaai.application.port.input.*;
 import com.listaai.application.port.input.command.*;
 import com.listaai.application.port.output.*;
+import com.listaai.application.service.exception.EmailNotVerifiedException;
+import com.listaai.application.service.exception.InvalidVerificationTokenException;
+import com.listaai.application.service.exception.VerificationCooldownException;
+import com.listaai.application.service.exception.VerificationTokenExpiredException;
+import com.listaai.application.service.exception.VerificationTokenSupersededException;
+import com.listaai.domain.model.EmailVerificationToken;
 import com.listaai.domain.model.OAuthIdentity;
 import com.listaai.domain.model.User;
+import com.listaai.infrastructure.config.EmailVerificationProperties;
 import com.listaai.infrastructure.security.JwtTokenService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -12,8 +21,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -26,6 +37,11 @@ public class AuthService implements AuthUseCase {
     private final JwtTokenService jwtTokenService;
     private final PasswordEncoder passwordEncoder;
     private final long refreshExpirationDays;
+    private final Clock clock;
+    private final EmailVerificationTokenRepository verifyTokenRepository;
+    private final EmailOutboxRepository outboxRepository;
+    private final EmailVerificationProperties verificationProperties;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final long ACCESS_TOKEN_EXPIRY_SECONDS = 900L;
 
@@ -36,7 +52,11 @@ public class AuthService implements AuthUseCase {
             AuthProviderRegistry authProviderRegistry,
             JwtTokenService jwtTokenService,
             PasswordEncoder passwordEncoder,
-            @Value("${app.jwt.refresh-expiration-days}") long refreshExpirationDays) {
+            @Value("${app.jwt.refresh-expiration-days}") long refreshExpirationDays,
+            Clock clock,
+            EmailVerificationTokenRepository verifyTokenRepository,
+            EmailOutboxRepository outboxRepository,
+            EmailVerificationProperties verificationProperties) {
         this.userRepository = userRepository;
         this.oAuthIdentityRepository = oAuthIdentityRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -44,6 +64,10 @@ public class AuthService implements AuthUseCase {
         this.jwtTokenService = jwtTokenService;
         this.passwordEncoder = passwordEncoder;
         this.refreshExpirationDays = refreshExpirationDays;
+        this.clock = clock;
+        this.verifyTokenRepository = verifyTokenRepository;
+        this.outboxRepository = outboxRepository;
+        this.verificationProperties = verificationProperties;
     }
 
     @Override
@@ -53,9 +77,33 @@ public class AuthService implements AuthUseCase {
             throw new IllegalStateException("Email already registered: " + command.email());
         }
         String hash = passwordEncoder.encode(command.password());
+        boolean verificationEnabled = verificationProperties.enabled();
         User user = userRepository.save(
-                new User(null, command.email(), command.name()), hash);
-        return issueTokens(user);
+                new User(null, command.email(), command.name(), !verificationEnabled), hash);
+
+        if (!verificationEnabled) {
+            return issueTokens(user);
+        }
+        issueVerificationEmail(user);
+        return null;
+    }
+
+    private void issueVerificationEmail(User user) {
+        Instant now = clock.instant();
+        String rawToken = jwtTokenService.generateRefreshToken();
+        String hash = jwtTokenService.hashRefreshToken(rawToken);
+        Instant expiresAt = now.plus(verificationProperties.tokenTtlHours(), ChronoUnit.HOURS);
+        verifyTokenRepository.save(user.id(), hash, expiresAt, now);
+
+        String payload;
+        try {
+            payload = objectMapper.writeValueAsString(Map.of(
+                    "token", rawToken,
+                    "name", user.name()));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize verify payload", e);
+        }
+        outboxRepository.enqueue("VERIFY_EMAIL", user.email(), payload, now);
     }
 
     @Override
@@ -65,6 +113,9 @@ public class AuthService implements AuthUseCase {
         AuthIdentity identity = provider.authenticate(command);
         User user = userRepository.findByEmail(identity.email())
                 .orElseThrow(() -> new BadCredentialsException("User not found"));
+        if (verificationProperties.enabled() && !user.verified()) {
+            throw new EmailNotVerifiedException();
+        }
         return issueTokens(user);
     }
 
@@ -84,9 +135,14 @@ public class AuthService implements AuthUseCase {
         } else {
             user = userRepository.findByEmail(identity.email())
                     .orElseGet(() -> userRepository.save(
-                            new User(null, identity.email(), identity.name()), null));
+                            new User(null, identity.email(), identity.name(),
+                                    identity.emailVerified() || !verificationProperties.enabled()),
+                            null));
             oAuthIdentityRepository.save(
                     new OAuthIdentity(null, user.id(), "google", identity.providerUserId()));
+        }
+        if (verificationProperties.enabled() && !user.verified()) {
+            throw new EmailNotVerifiedException();
         }
         return issueTokens(user);
     }
@@ -112,11 +168,51 @@ public class AuthService implements AuthUseCase {
         refreshTokenRepository.revoke(tokenHash);
     }
 
+    @Override
+    @Transactional
+    public void verifyEmail(VerifyEmailCommand command) {
+        String hash = jwtTokenService.hashRefreshToken(command.token());
+        EmailVerificationToken token = verifyTokenRepository.findByTokenHash(hash)
+                .orElseThrow(InvalidVerificationTokenException::new);
+
+        Instant now = clock.instant();
+        if (token.isRevoked()) throw new VerificationTokenSupersededException();
+        if (token.isExpired(now)) throw new VerificationTokenExpiredException();
+        if (token.isUsed()) return; // idempotent: already verified
+
+        userRepository.setVerified(token.userId(), true);
+        verifyTokenRepository.markUsed(token.id(), now);
+    }
+
+    @Override
+    @Transactional
+    public void resendVerification(ResendVerificationCommand command) {
+        Optional<User> maybeUser = userRepository.findByEmail(command.email());
+        if (maybeUser.isEmpty()) return;
+        User user = maybeUser.get();
+        if (user.verified()) return;
+
+        Instant now = clock.instant();
+        Optional<EmailVerificationToken> latest = verifyTokenRepository.findLatestByUserId(user.id());
+
+        latest.ifPresent(t -> {
+            long elapsed = now.getEpochSecond() - t.createdAt().getEpochSecond();
+            if (elapsed < verificationProperties.resendCooldownSeconds()) {
+                throw new VerificationCooldownException();
+            }
+            if (!t.isUsed() && !t.isRevoked()) {
+                verifyTokenRepository.markRevoked(t.id(), now);
+            }
+        });
+
+        issueVerificationEmail(user);
+    }
+
     private AuthResult issueTokens(User user) {
         String accessToken = jwtTokenService.generateAccessToken(user);
         String refreshToken = jwtTokenService.generateRefreshToken();
         String refreshTokenHash = jwtTokenService.hashRefreshToken(refreshToken);
-        Instant expiresAt = Instant.now().plus(refreshExpirationDays, ChronoUnit.DAYS);
+        Instant expiresAt = clock.instant().plus(refreshExpirationDays, ChronoUnit.DAYS);
         refreshTokenRepository.save(user.id(), refreshTokenHash, expiresAt);
         return new AuthResult(accessToken, refreshToken, ACCESS_TOKEN_EXPIRY_SECONDS);
     }

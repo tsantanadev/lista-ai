@@ -1,6 +1,9 @@
 package com.listaai.infrastructure.adapter.input.rest;
 
+import com.listaai.application.port.input.AuthResult;
 import com.listaai.application.port.input.AuthUseCase;
+import com.listaai.application.port.input.command.ResendVerificationCommand;
+import com.listaai.application.port.input.command.VerifyEmailCommand;
 import com.listaai.infrastructure.adapter.input.rest.dto.*;
 import com.listaai.infrastructure.adapter.input.rest.mapper.AuthRestMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,15 +31,26 @@ public class AuthController {
 
     @PostMapping("/register")
     @Operation(summary = "Register a new user",
-               description = "Creates a new user account and returns a JWT access token and refresh token.")
+               description = """
+                       Creates a new user account. When email-verification is enabled, \
+                       returns 202 Accepted and sends a verification email; no tokens \
+                       are issued until the user verifies. When disabled, returns 201 \
+                       with tokens (legacy behavior).""")
     @ApiResponses({
-        @ApiResponse(responseCode = "201", description = "User registered successfully",
+        @ApiResponse(responseCode = "201", description = "User registered (flag off) — tokens returned",
             content = @Content(schema = @Schema(implementation = TokenResponse.class))),
+        @ApiResponse(responseCode = "202", description = "User registered (flag on) — verification email sent",
+            content = @Content(schema = @Schema(implementation = RegisterPendingResponse.class))),
         @ApiResponse(responseCode = "409", description = "Email already registered",
             content = @Content)
     })
-    public ResponseEntity<TokenResponse> register(@RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(authUseCase.register(mapper.toCommand(request))));
+    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+        AuthResult result = authUseCase.register(mapper.toCommand(request));
+        if (result == null) {
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
+                    .body(new RegisterPendingResponse("Check your email to verify your account."));
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(result));
     }
 
     @PostMapping("/login")
@@ -89,5 +103,30 @@ public class AuthController {
     public ResponseEntity<Void> logout(@RequestBody RefreshRequest request) {
         authUseCase.logout(mapper.toCommand(request));
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/verify-email")
+    @Operation(summary = "Verify an email address",
+               description = "Consumes a verification token previously emailed to the user.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Verified (or already verified — idempotent)"),
+        @ApiResponse(responseCode = "400", description = "Token is invalid", content = @Content),
+        @ApiResponse(responseCode = "410", description = "Token expired or superseded", content = @Content)
+    })
+    public ResponseEntity<Void> verifyEmail(@RequestBody VerifyEmailRequest request) {
+        authUseCase.verifyEmail(new VerifyEmailCommand(request.token()));
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/resend-verification")
+    @Operation(summary = "Resend verification email",
+               description = "Sends a fresh verification email. Always returns 200 to avoid account enumeration.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Request accepted"),
+        @ApiResponse(responseCode = "429", description = "Cooldown — try again shortly", content = @Content)
+    })
+    public ResponseEntity<Void> resendVerification(@RequestBody ResendVerificationRequest request) {
+        authUseCase.resendVerification(new ResendVerificationCommand(request.email()));
+        return ResponseEntity.ok().build();
     }
 }

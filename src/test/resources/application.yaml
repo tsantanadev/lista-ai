@@ -7,3 +7,16 @@ app:
     google:
       jwks-uri: http://localhost:9090/oauth2/v3/certs
       client-id: test-google-client-id
+  email:
+    from-address: noreply@test.local
+    provider: resend
+    resend:
+      api-key: test-resend-key
+      base-url: http://localhost:9091
+    worker:
+      poll-interval-ms: 10000
+  email-verification:
+    enabled: false
+    token-ttl-hours: 24
+    resend-cooldown-seconds: 60
+    redirect-base-url: https://app.test.local/verify-email

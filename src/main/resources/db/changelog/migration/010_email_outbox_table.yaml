@@ -1,0 +1,61 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010
+      author: lista-ai
+      changes:
+        - createTable:
+            tableName: email_outbox
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: template
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: recipient
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload_json
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attempts
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_attempt_at
+                  type: TIMESTAMP
+                  defaultValueDate: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_error
+                  type: TEXT
+              - column:
+                  name: sent_at
+                  type: TIMESTAMP
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueDate: now()
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: CREATE INDEX idx_outbox_pending ON email_outbox (status, next_attempt_at) WHERE status = 'PENDING'

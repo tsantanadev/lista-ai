@@ -43,7 +43,7 @@ public abstract class BaseIntegrationTest {
     @AfterEach
     void cleanDatabase() {
         jdbcTemplate.execute(
-            "TRUNCATE TABLE item_list, user_shopping_list, list, oauth_identities, refresh_tokens, users RESTART IDENTITY CASCADE");
+            "TRUNCATE TABLE item_list, user_shopping_list, list, oauth_identities, refresh_tokens, email_verification_tokens, email_outbox, users RESTART IDENTITY CASCADE");
     }
 
     protected String registerAndGetToken(String email, String password, String name) {
