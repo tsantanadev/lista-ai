@@ -46,7 +46,7 @@ public class ItemListController {
     public ResponseEntity<List<ItemListResponse>> getItemsList(
             @Parameter(description = "ID of the shopping list", required = true)
             @PathVariable long listId) {
-        var result = service.getItemsList(listId).stream()
+        var result = service.getItemsList(listId, 0L).stream()
                 .map(mapper::toResponse)
                 .toList();
         return ResponseEntity.ok(result);
@@ -66,7 +66,7 @@ public class ItemListController {
             @Parameter(description = "ID of the shopping list", required = true)
             @PathVariable long listId) {
         var command = mapper.toCreateCommand(request, listId);
-        var created = service.save(command);
+        var created = service.save(command, 0L);
         return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(created));
     }
 
@@ -86,7 +86,7 @@ public class ItemListController {
             @Parameter(description = "ID of the item to update", required = true)
             @PathVariable long itemId) {
         var command = mapper.toUpdateCommand(request, itemId, listId);
-        var result = service.update(command);
+        var result = service.update(command, 0L);
         return ResponseEntity.ok(mapper.toResponse(result));
     }
 
@@ -103,7 +103,7 @@ public class ItemListController {
             @PathVariable long id,
             @Parameter(description = "ID of the shopping list", required = true)
             @PathVariable long listId) {
-        service.delete(listId, id);
+        service.delete(listId, id, 0L);
         return ResponseEntity.noContent().build();
     }
 }

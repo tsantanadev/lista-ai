@@ -7,8 +7,8 @@ import com.listaai.domain.model.ItemList;
 import java.util.List;
 
 public interface ItemListService {
-    List<ItemList> getItemsList(long listId);
-    ItemList save(CreateItemListCommand createCommand);
-    ItemList update(UpdateItemListCommand updateCommand);
-    void delete(long listId, long id);
+    List<ItemList> getItemsList(long listId, long userId);
+    ItemList save(CreateItemListCommand createCommand, long userId);
+    ItemList update(UpdateItemListCommand updateCommand, long userId);
+    void delete(long listId, long id, long userId);
 }
