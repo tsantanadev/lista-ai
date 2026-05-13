@@ -1,6 +1,7 @@
 package com.listaai.infrastructure.adapter.output.persistence;
 
 import com.listaai.application.port.output.ItemListRepository;
+import com.listaai.application.service.exception.ItemNotFoundException;
 import com.listaai.domain.model.ItemList;
 import com.listaai.infrastructure.adapter.output.persistence.mapper.ItemListPersistenceMapper;
 import com.listaai.infrastructure.adapter.output.persistence.repository.ItemListJpaRepository;
@@ -39,8 +40,7 @@ public class ItemListPersistenceAdapter implements ItemListRepository {
     @Transactional
     public ItemList update(ItemList itemList, long listId) {
         var entity = repository.findByIdAndListId(itemList.id(), listId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Item %d not found in list %d".formatted(itemList.id(), listId)));
+                .orElseThrow(() -> new ItemNotFoundException(itemList.id(), listId));
         entity.setDescription(itemList.description());
         entity.setChecked(itemList.checked());
         entity.setQuantity(itemList.quantity());

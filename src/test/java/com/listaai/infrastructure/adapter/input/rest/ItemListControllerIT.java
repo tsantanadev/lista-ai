@@ -308,4 +308,19 @@ public class ItemListControllerIT extends BaseIntegrationTest {
         .then()
             .statusCode(401);
     }
+
+    @Test
+    void updateItem_returns404_whenItemNotFound() {
+        String token = defaultUserToken();
+        int listId = seedList(token);
+
+        given()
+            .header("Authorization", "Bearer " + token)
+            .contentType(ContentType.JSON)
+            .body("{\"description\":\"Butter\",\"checked\":true}")
+        .when()
+            .put("/v1/lists/" + listId + "/items/99999")
+        .then()
+            .statusCode(404);
+    }
 }
