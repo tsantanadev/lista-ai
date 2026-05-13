@@ -2,6 +2,7 @@ package com.listaai.infrastructure.adapter.input.rest;
 
 import com.listaai.application.service.exception.EmailNotVerifiedException;
 import com.listaai.application.service.exception.InvalidVerificationTokenException;
+import com.listaai.application.service.exception.ItemNotFoundException;
 import com.listaai.application.service.exception.VerificationCooldownException;
 import com.listaai.application.service.exception.VerificationTokenExpiredException;
 import com.listaai.application.service.exception.VerificationTokenSupersededException;
@@ -53,5 +54,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(EmailNotVerifiedException.class)
     public ProblemDetail handleEmailNotVerified(EmailNotVerifiedException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(ItemNotFoundException.class)
+    public ProblemDetail handleItemNotFound(ItemNotFoundException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 }
