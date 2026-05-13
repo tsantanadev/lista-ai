@@ -16,6 +16,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -41,12 +43,16 @@ public class ItemListController {
         @ApiResponse(responseCode = "200", description = "Items retrieved successfully",
             content = @Content(array = @ArraySchema(schema = @Schema(implementation = ItemListResponse.class)))),
         @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token",
+            content = @Content),
+        @ApiResponse(responseCode = "403", description = "List belongs to a different user",
             content = @Content)
     })
     public ResponseEntity<List<ItemListResponse>> getItemsList(
             @Parameter(description = "ID of the shopping list", required = true)
-            @PathVariable long listId) {
-        var result = service.getItemsList(listId).stream()
+            @PathVariable long listId,
+            @AuthenticationPrincipal Jwt jwt) {
+        long userId = Long.parseLong(jwt.getSubject());
+        var result = service.getItemsList(listId, userId).stream()
                 .map(mapper::toResponse)
                 .toList();
         return ResponseEntity.ok(result);
@@ -59,14 +65,18 @@ public class ItemListController {
         @ApiResponse(responseCode = "201", description = "Item added successfully",
             content = @Content(schema = @Schema(implementation = ItemListResponse.class))),
         @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token",
+            content = @Content),
+        @ApiResponse(responseCode = "403", description = "List belongs to a different user",
             content = @Content)
     })
     public ResponseEntity<ItemListResponse> postItemList(
             @RequestBody ItemListPostRequest request,
             @Parameter(description = "ID of the shopping list", required = true)
-            @PathVariable long listId) {
+            @PathVariable long listId,
+            @AuthenticationPrincipal Jwt jwt) {
+        long userId = Long.parseLong(jwt.getSubject());
         var command = mapper.toCreateCommand(request, listId);
-        var created = service.save(command);
+        var created = service.save(command, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(created));
     }
 
@@ -77,6 +87,8 @@ public class ItemListController {
         @ApiResponse(responseCode = "200", description = "Item updated successfully",
             content = @Content(schema = @Schema(implementation = ItemListResponse.class))),
         @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token",
+            content = @Content),
+        @ApiResponse(responseCode = "403", description = "List belongs to a different user",
             content = @Content)
     })
     public ResponseEntity<ItemListResponse> putItemList(
@@ -84,9 +96,11 @@ public class ItemListController {
             @Parameter(description = "ID of the shopping list", required = true)
             @PathVariable long listId,
             @Parameter(description = "ID of the item to update", required = true)
-            @PathVariable long itemId) {
+            @PathVariable long itemId,
+            @AuthenticationPrincipal Jwt jwt) {
+        long userId = Long.parseLong(jwt.getSubject());
         var command = mapper.toUpdateCommand(request, itemId, listId);
-        var result = service.update(command);
+        var result = service.update(command, userId);
         return ResponseEntity.ok(mapper.toResponse(result));
     }
 
@@ -96,14 +110,18 @@ public class ItemListController {
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Item deleted successfully"),
         @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token",
+            content = @Content),
+        @ApiResponse(responseCode = "403", description = "List belongs to a different user",
             content = @Content)
     })
     public ResponseEntity<Void> deleteItemList(
             @Parameter(description = "ID of the item to delete", required = true)
             @PathVariable long id,
             @Parameter(description = "ID of the shopping list", required = true)
-            @PathVariable long listId) {
-        service.delete(listId, id);
+            @PathVariable long listId,
+            @AuthenticationPrincipal Jwt jwt) {
+        long userId = Long.parseLong(jwt.getSubject());
+        service.delete(listId, id, userId);
         return ResponseEntity.noContent().build();
     }
 }

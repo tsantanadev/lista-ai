@@ -189,4 +189,123 @@ public class ItemListControllerIT extends BaseIntegrationTest {
         .then()
             .statusCode(204);
     }
+
+    private int getFirstItemId(String token, int listId) {
+        return given()
+            .header("Authorization", "Bearer " + token)
+        .when()
+            .get("/v1/lists/" + listId + "/items")
+        .then()
+            .statusCode(200)
+            .extract()
+            .path("[0].id");
+    }
+
+    // --- cross-user 403 ---
+
+    @Test
+    void getItems_returns403_whenNotOwner() {
+        String ownerToken = defaultUserToken();
+        String otherToken = registerAndGetToken("other@example.com", "Password123!", "Other");
+        int listId = seedList(ownerToken);
+
+        given()
+            .header("Authorization", "Bearer " + otherToken)
+        .when()
+            .get("/v1/lists/" + listId + "/items")
+        .then()
+            .statusCode(403);
+    }
+
+    @Test
+    void createItem_returns403_whenNotOwner() {
+        String ownerToken = defaultUserToken();
+        String otherToken = registerAndGetToken("other@example.com", "Password123!", "Other");
+        int listId = seedList(ownerToken);
+
+        given()
+            .header("Authorization", "Bearer " + otherToken)
+            .contentType(ContentType.JSON)
+            .body("{\"description\":\"Milk\"}")
+        .when()
+            .post("/v1/lists/" + listId + "/items")
+        .then()
+            .statusCode(403);
+    }
+
+    @Test
+    void updateItem_returns403_whenNotOwner() {
+        String ownerToken = defaultUserToken();
+        String otherToken = registerAndGetToken("other@example.com", "Password123!", "Other");
+        int listId = seedList(ownerToken);
+        seedItem(ownerToken, listId, "Milk");
+        int itemId = getFirstItemId(ownerToken, listId);
+
+        given()
+            .header("Authorization", "Bearer " + otherToken)
+            .contentType(ContentType.JSON)
+            .body("{\"description\":\"Butter\",\"checked\":true}")
+        .when()
+            .put("/v1/lists/" + listId + "/items/" + itemId)
+        .then()
+            .statusCode(403);
+    }
+
+    @Test
+    void deleteItem_returns403_whenNotOwner() {
+        String ownerToken = defaultUserToken();
+        String otherToken = registerAndGetToken("other@example.com", "Password123!", "Other");
+        int listId = seedList(ownerToken);
+        seedItem(ownerToken, listId, "Milk");
+        int itemId = getFirstItemId(ownerToken, listId);
+
+        given()
+            .header("Authorization", "Bearer " + otherToken)
+        .when()
+            .delete("/v1/lists/" + listId + "/items/" + itemId)
+        .then()
+            .statusCode(403);
+    }
+
+    // --- unauthenticated 401 ---
+
+    @Test
+    void getItems_returns401_whenUnauthenticated() {
+        given()
+        .when()
+            .get("/v1/lists/1/items")
+        .then()
+            .statusCode(401);
+    }
+
+    @Test
+    void createItem_returns401_whenUnauthenticated() {
+        given()
+            .contentType(ContentType.JSON)
+            .body("{\"description\":\"Milk\"}")
+        .when()
+            .post("/v1/lists/1/items")
+        .then()
+            .statusCode(401);
+    }
+
+    @Test
+    void updateItem_returns401_whenUnauthenticated() {
+        given()
+            .contentType(ContentType.JSON)
+            .body("{\"description\":\"Butter\",\"checked\":true}")
+        .when()
+            .put("/v1/lists/1/items/1")
+        .then()
+            .statusCode(401);
+    }
+
+    @Test
+    void deleteItem_returns401_whenUnauthenticated() {
+        given()
+        .when()
+            .delete("/v1/lists/1/items/1")
+        .then()
+            .statusCode(401);
+    }
 }
