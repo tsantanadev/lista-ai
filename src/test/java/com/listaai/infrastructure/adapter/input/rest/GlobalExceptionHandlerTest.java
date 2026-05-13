@@ -70,5 +70,6 @@ class GlobalExceptionHandlerTest {
     void itemNotFound_mapsTo404() {
         ProblemDetail pd = handler.handleItemNotFound(new ItemNotFoundException(5L, 3L));
         assertThat(pd.getStatus()).isEqualTo(HttpStatus.NOT_FOUND.value());
+        assertThat(pd.getDetail()).isEqualTo("Item 5 not found in list 3");
     }
 }
