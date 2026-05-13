@@ -13,7 +13,7 @@ public interface ItemListJpaRepository extends JpaRepository<ItemListEntity, Lon
     List<ItemListEntity> findAllByListId(long listId);
 
     @Transactional
-    void deleteByIdAndListId(long id, long listId);
+    int deleteByIdAndListId(long id, long listId);
 
     Optional<ItemListEntity> findByIdAndListId(long id, long listId);
 }

@@ -52,6 +52,9 @@ public class ItemListPersistenceAdapter implements ItemListRepository {
     @Override
     @Transactional
     public void delete(long listId, long id) {
-        repository.deleteByIdAndListId(id, listId);
+        int deleted = repository.deleteByIdAndListId(id, listId);
+        if (deleted == 0) {
+            throw new ItemNotFoundException(id, listId);
+        }
     }
 }

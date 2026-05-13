@@ -323,4 +323,17 @@ public class ItemListControllerIT extends BaseIntegrationTest {
         .then()
             .statusCode(404);
     }
+
+    @Test
+    void deleteItem_returns404_whenItemNotFound() {
+        String token = defaultUserToken();
+        int listId = seedList(token);
+
+        given()
+            .header("Authorization", "Bearer " + token)
+        .when()
+            .delete("/v1/lists/" + listId + "/items/99999")
+        .then()
+            .statusCode(404);
+    }
 }
